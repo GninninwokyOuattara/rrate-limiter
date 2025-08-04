@@ -630,6 +630,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rapidhash"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ef3d82b018f786967b1a5d34a08ebc3c7a9ab35b5bcbe3e2e057a0a453f26c8"
+
+[[package]]
 name = "rayon"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -708,6 +714,7 @@ name = "rrate-limiter"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "rapidhash",
  "redis",
  "regextrie",
  "serde",
