@@ -14,16 +14,25 @@ mod rate_limiter;
 mod rules;
 mod utils;
 
+use matchit::Router as MatchitRouter;
+
 struct States {
     redis_connection: redis::Connection,
+    router: matchit::Router<&'static str>,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut router = MatchitRouter::new();
+    let st = String::from("/home");
+    router.insert(st, "Welcome!")?;
+    router.insert("/users/{id}".to_string(), "A User")?;
+
     tracing_subscriber::fmt::init();
 
     let states = Arc::new(Mutex::new(States {
         redis_connection: connect_to_redis()?,
+        router,
     }));
 
     let app = Router::new()
