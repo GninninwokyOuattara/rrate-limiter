@@ -11,6 +11,7 @@ use axum::{
 };
 
 mod rate_limiter;
+mod rules;
 mod utils;
 
 struct States {
