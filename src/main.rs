@@ -94,6 +94,16 @@ async fn limiter_handler(
         .hget(format!("rules:{}", matched_route), "algorithm")
         .context("Failed to succesfully retrieve the redis key")?;
 
+    let all_values: Vec<String> = states
+        .redis_connection
+        .lock()?
+        .hmget(
+            format!("rules:{}", matched_route),
+            &["algorithm", "expiration", "limit"],
+        )
+        .context("ouch")?;
+
+    println!("All values : {:?}", all_values);
     println!("Algorithm found: {:#?}", algorithm);
 
     // Where the rate limiting happens.
