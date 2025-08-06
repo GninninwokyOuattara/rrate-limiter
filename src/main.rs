@@ -21,8 +21,8 @@ use redis::Commands;
 use crate::{rules::generate_dummy_rules, utils::populate_redis_kv_rule_algorithm};
 
 struct States {
-    redis_connection: redis::Connection,
-    route_matcher: matchit::Router<String>,
+    redis_connection: Arc<Mutex<redis::Connection>>,
+    route_matcher: Arc<Mutex<matchit::Router<String>>>,
 }
 
 #[tokio::main]
@@ -42,10 +42,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing_subscriber::fmt::init();
 
-    let states = Arc::new(Mutex::new(States {
-        redis_connection: redis_connection,
-        route_matcher,
-    }));
+    let states = Arc::new(States {
+        redis_connection: Arc::new(Mutex::new(redis_connection)),
+        route_matcher: Arc::new(Mutex::new(route_matcher)),
+    });
 
     let app = Router::new()
         .route("/", get(limiter_handler))
@@ -66,7 +66,7 @@ fn connect_to_redis() -> Result<redis::Connection, Box<dyn std::error::Error>> {
 #[debug_handler]
 async fn limiter_handler(
     Query(params): Query<HashMap<String, String>>,
-    State(states): State<Arc<Mutex<States>>>,
+    State(states): State<Arc<States>>,
     request: Request,
 ) -> impl IntoResponse {
     println!("Received params: {:?}", params);
@@ -75,32 +75,39 @@ async fn limiter_handler(
 
     // Finding which pattern match the uri using the matcher
 
-    let res = {
-        let lock = states.lock().unwrap();
-        lock.route_matcher.at(uri.path()).unwrap().value.clone()
-    };
+    // We use the router matcher for that
+    let matched_route = states
+        .route_matcher
+        .lock()
+        .unwrap()
+        .at(uri.path())
+        .unwrap()
+        .value
+        .clone();
+    println!("The matching route : {:#?}", &matched_route);
 
-    let algorithm = {
-        let mut lock = states.lock();
-        /* println!("lock 2 found: {:#?}", &lock.err()); */
-        let algorithm = lock
-            .unwrap()
-            .redis_connection
-            .get::<&String, String>(&format!("rules_to_algorithms:{}", &res));
-        println!("Algorithm found: {:#?}", algorithm);
-    };
+    // Find the algorithm for that route in the redis cache.
 
-    /* let (message, headers) = rate_limiter::RateLimiter::check(
-        &mut states.lock().unwrap().redis_connection,
-        params.get("key").unwrap_or(&"default_key".to_string()),
-        params.get("endpoint").unwrap_or(&"products".to_string()),
-        rate_limiter::RateLimiterAlgorithms::FixedWindow,
+    let algorithm = states
+        .redis_connection
+        .lock()
+        .unwrap()
+        .get::<&String, String>(&format!("rules_to_algorithms:{}", &matched_route))
+        .unwrap();
+    println!("Algorithm found: {:#?}", algorithm);
+
+    // Where the rate limiting happens.
+    let (message, headers) = rate_limiter::RateLimiter::check(
+        &mut states.redis_connection.lock().unwrap(),
+        &"limitkey",
+        &matched_route,
+        rate_limiter::RateLimiterAlgorithms::from_string(&algorithm).unwrap(),
     )
     .unwrap();
 
-    (axum::http::StatusCode::OK, headers.to_headers(), message) */
+    (axum::http::StatusCode::OK, headers.to_headers(), message)
 
     // println!("Request: {:#?}", request);
 
-    "Hello World!"
+    // "Hello World!"
 }
