@@ -37,6 +37,7 @@ impl IntoResponse for LimiterError {
         }; */
 
         // There will be a better way to handle those error but for the moment a 502 for all errors is accepted.
+        println!("Error {:?}", &self.to_string());
         (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
     }
 }
