@@ -78,7 +78,9 @@ async fn limiter_handler(
 ) -> anyhow::Result<impl IntoResponse, errors::LimiterError> {
     println!("Received params: {:?}", params);
     let uri = request.uri();
-    let headers = request.headers();
+    let _headers = request.headers();
+
+    // TODO: properly handle the key that should be rate limited.
 
     // Finding which pattern match the uri using the matcher
 
@@ -86,15 +88,8 @@ async fn limiter_handler(
     let matched_route = states.route_matcher.lock()?.at(uri.path())?.value.clone();
     println!("The matching route : {:#?}", &matched_route);
 
-    // Find the algorithm for that route in the redis cache.
-
-    let algorithm: String = states
-        .redis_connection
-        .lock()?
-        .hget(format!("rules:{}", matched_route), "algorithm")
-        .context("Failed to succesfully retrieve the redis key")?;
-
-    let all_values: Vec<String> = states
+    // We retrieve the algorithm, expiration and limit from redis
+    let (rl_algo, expiration, limit): (String, u64, u64) = states
         .redis_connection
         .lock()?
         .hmget(
@@ -103,11 +98,11 @@ async fn limiter_handler(
         )
         .context("ouch")?;
 
-    println!("All values : {:?}", all_values);
-    println!("Algorithm found: {:#?}", algorithm);
+    println!("All values : {:?}", (&rl_algo, &expiration, &limit));
+    println!("Algorithm found: {:#?}", &rl_algo);
 
     // Where the rate limiting happens.
-    let Ok(algo) = RateLimiterAlgorithms::from_string(&algorithm) else {
+    let Ok(rate_limiting_algorithm) = RateLimiterAlgorithms::from_string(&rl_algo) else {
         return Err(anyhow!("Could not convert cache key to local algorithm").into());
     };
 
@@ -115,15 +110,11 @@ async fn limiter_handler(
         &mut states.redis_connection.lock().unwrap(),
         &"limitkey",
         &matched_route,
-        algo,
-        100,
-        3600,
+        rate_limiting_algorithm,
+        limit,
+        expiration,
     )
     .unwrap();
 
     Ok((axum::http::StatusCode::OK, headers.to_headers(), message))
-
-    // println!("Request: {:#?}", request);
-
-    // "Hello World!"
 }
