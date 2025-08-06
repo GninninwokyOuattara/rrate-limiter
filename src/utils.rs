@@ -2,9 +2,18 @@ use redis::{Commands, RedisError};
 
 use crate::{rate_limiter::RateLimiterAlgorithms, rules::Rule};
 
-pub fn make_redis_key(key: &str, endpoint: &str, algorithm: &RateLimiterAlgorithms) -> String {
-    // Ex : fixed_window:userid:matched_endpoint_from_rules
-    format!("{}:{}:{}", algorithm.to_string(), key, endpoint)
+pub fn make_redis_key(
+    key_tracked: &str,
+    hashed_route: &str,
+    limit_algorithm: &RateLimiterAlgorithms,
+) -> String {
+    // Ex : fixed_window : hash of the matched route : key being tracked for rate limitation
+    format!(
+        "{}:{}:{}",
+        limit_algorithm.to_string(),
+        hashed_route,
+        key_tracked
+    )
 }
 
 pub fn populate_redis_kv_rule_algorithm(
