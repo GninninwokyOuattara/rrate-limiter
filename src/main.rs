@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use axum::{
     Router,
     extract::{Query, Request, State},
@@ -20,7 +20,10 @@ use axum_macros::debug_handler;
 use matchit::Router as MatchitRouter;
 use redis::Commands;
 
-use crate::{rules::generate_dummy_rules, utils::populate_redis_kv_rule_algorithm};
+use crate::{
+    rate_limiter::RateLimiterAlgorithms, rules::generate_dummy_rules,
+    utils::populate_redis_kv_rule_algorithm,
+};
 
 struct States {
     redis_connection: Arc<Mutex<redis::Connection>>,
@@ -92,11 +95,17 @@ async fn limiter_handler(
     println!("Algorithm found: {:#?}", algorithm);
 
     // Where the rate limiting happens.
+    let Ok(algo) = RateLimiterAlgorithms::from_string(&algorithm) else {
+        return Err(anyhow!("Could not convert cache key to local algorithm").into());
+    };
+
     let (message, headers) = rate_limiter::RateLimiter::check(
         &mut states.redis_connection.lock().unwrap(),
         &"limitkey",
         &matched_route,
-        rate_limiter::RateLimiterAlgorithms::from_string(&algorithm).unwrap(),
+        algo,
+        100,
+        3600,
     )
     .unwrap();
 

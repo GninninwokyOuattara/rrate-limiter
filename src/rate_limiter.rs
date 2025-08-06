@@ -1,6 +1,10 @@
-use std::result;
-
 use crate::utils::make_redis_key;
+
+const FIXED_WINDOW: &str = "fw";
+const SLIDING_WINDOW_COUNTER: &str = "swc";
+const SLIDING_WINDOW_LOG: &str = "swl";
+const LEAKY_BUCKET: &str = "lb";
+const TOKEN_BUCKET: &str = "tb";
 
 pub struct RateLimiterHeaders {
     limit: u64,     // Maximum number of requests allowed
@@ -44,22 +48,32 @@ pub enum RateLimiterAlgorithms {
 impl RateLimiterAlgorithms {
     pub fn to_string(&self) -> String {
         match self {
-            RateLimiterAlgorithms::FixedWindow => "fixed_window".to_string(),
-            RateLimiterAlgorithms::SlidingWindowCounter => "sliding_window_counter".to_string(),
-            RateLimiterAlgorithms::SlidingWindowLog => "sliding_window_log".to_string(),
-            RateLimiterAlgorithms::TokenBucket => "token_bucket".to_string(),
-            RateLimiterAlgorithms::LeakyBucket => "leaky_bucket".to_string(),
+            RateLimiterAlgorithms::FixedWindow => FIXED_WINDOW.to_string(),
+            RateLimiterAlgorithms::SlidingWindowCounter => SLIDING_WINDOW_COUNTER.to_string(),
+            RateLimiterAlgorithms::SlidingWindowLog => SLIDING_WINDOW_COUNTER.to_string(),
+            RateLimiterAlgorithms::TokenBucket => TOKEN_BUCKET.to_string(),
+            RateLimiterAlgorithms::LeakyBucket => LEAKY_BUCKET.to_string(),
         }
     }
 
-    pub fn from_string(s: &str) -> Option<Self> {
+    pub fn to_str(&self) -> &str {
+        match self {
+            RateLimiterAlgorithms::FixedWindow => FIXED_WINDOW,
+            RateLimiterAlgorithms::SlidingWindowCounter => SLIDING_WINDOW_COUNTER,
+            RateLimiterAlgorithms::SlidingWindowLog => SLIDING_WINDOW_COUNTER,
+            RateLimiterAlgorithms::TokenBucket => TOKEN_BUCKET,
+            RateLimiterAlgorithms::LeakyBucket => LEAKY_BUCKET,
+        }
+    }
+
+    pub fn from_string(s: &str) -> Result<Self, ()> {
         match s {
-            "fixed_window" => Some(RateLimiterAlgorithms::FixedWindow),
-            "sliding_window_counter" => Some(RateLimiterAlgorithms::SlidingWindowCounter),
-            "sliding_window_log" => Some(RateLimiterAlgorithms::SlidingWindowLog),
-            "token_bucket" => Some(RateLimiterAlgorithms::TokenBucket),
-            "leaky_bucket" => Some(RateLimiterAlgorithms::LeakyBucket),
-            _ => None,
+            FIXED_WINDOW => Ok(RateLimiterAlgorithms::FixedWindow),
+            SLIDING_WINDOW_COUNTER => Ok(RateLimiterAlgorithms::SlidingWindowCounter),
+            SLIDING_WINDOW_LOG => Ok(RateLimiterAlgorithms::SlidingWindowLog),
+            TOKEN_BUCKET => Ok(RateLimiterAlgorithms::TokenBucket),
+            LEAKY_BUCKET => Ok(RateLimiterAlgorithms::LeakyBucket),
+            _ => Err(()),
         }
     }
 
@@ -69,11 +83,12 @@ impl RateLimiterAlgorithms {
                 r#"
                 local key = KEYS[1]
                 local limit = tonumber(ARGV[1])
+                local expiration = tonumber(ARGV[2])
 
     
                 if redis.call('EXISTS', key) == 0 then
                     redis.call('SET', key, 0)
-                    redis.call('EXPIRE', key, ARGV[1])
+                    redis.call('EXPIRE', key, expiration)
                 end
 
                 if redis.call('GET', key) + 1 > limit then
@@ -111,17 +126,20 @@ pub struct RateLimiter {}
 impl RateLimiter {
     pub fn check(
         mut redis_connection: &mut redis::Connection,
-        key: &str,
-        endpoint: &str,
+        tracked_key: &str,
+        hashed_route: &str,
         algorithm: RateLimiterAlgorithms,
+        limit: u64,
+        expiration: u64,
     ) -> Result<(String, RateLimiterHeaders), ()> {
-        let redis_key = make_redis_key(key, endpoint, &algorithm);
+        let redis_key = make_redis_key(tracked_key, hashed_route, &algorithm);
 
         let script = redis::Script::new(algorithm.get_script());
 
         let redis_result = script
             .key(redis_key)
-            .arg(100)
+            .arg(limit)
+            .arg(expiration)
             .invoke::<Vec<String>>(&mut redis_connection);
 
         let result = if let Ok(result) = redis_result {
