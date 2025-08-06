@@ -14,7 +14,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum LimiterError {
     #[error("No match found")]
-    NoRouteMatch(#[from] MatchError),
+    NoRouteMatch(#[from] MatchError), // TODO: Better error for this, it needs context. a custom error ?
 
     #[error("Failed to connect to Redis: {0}")]
     RedisError(#[from] RedisError),
@@ -44,7 +44,7 @@ impl IntoResponse for LimiterError {
 }
 
 impl<T> From<PoisonError<T>> for LimiterError {
-    fn from(err: PoisonError<T>) -> Self {
+    fn from(_err: PoisonError<T>) -> Self {
         let error = anyhow!("Poisonned lock");
         error.into()
     }

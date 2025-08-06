@@ -89,14 +89,10 @@ async fn limiter_handler(
     println!("The matching route : {:#?}", &matched_route);
 
     // We retrieve the algorithm, expiration and limit from redis
-    let (rl_algo, expiration, limit): (String, u64, u64) = states
-        .redis_connection
-        .lock()?
-        .hmget(
-            format!("rules:{}", matched_route),
-            &["algorithm", "expiration", "limit"],
-        )
-        .context("ouch")?;
+    let (rl_algo, expiration, limit): (String, u64, u64) = states.redis_connection.lock()?.hmget(
+        format!("rules:{}", matched_route),
+        &["algorithm", "expiration", "limit", "troll"],
+    )?;
 
     println!("All values : {:?}", (&rl_algo, &expiration, &limit));
     println!("Algorithm found: {:#?}", &rl_algo);
