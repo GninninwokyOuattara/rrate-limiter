@@ -1,7 +1,7 @@
 use std::sync::PoisonError;
 
 use anyhow::anyhow;
-use anyhow::bail;
+
 use axum::{
     body::Body,
     http::StatusCode,
@@ -16,8 +16,9 @@ pub enum LimiterError {
     #[error("No match found")]
     NoRouteMatch(#[from] MatchError),
 
-    /* #[error("redis error")]
-    RedisError(#[from] RedisError), */
+    #[error("Failed to connect to Redis: {0}")]
+    RedisError(#[from] RedisError),
+
     #[error(transparent)]
     Unknown(#[from] anyhow::Error),
 }
