@@ -85,13 +85,19 @@ async fn limiter_handler(
     // Finding which pattern match the uri using the matcher
 
     // We use the router matcher for that
-    let matched_route = states.route_matcher.lock()?.at(uri.path())?.value.clone();
+    let matched_route = states
+        .route_matcher
+        .lock()?
+        .at(uri.path())
+        .map_err(|_err| errors::LimiterError::NoRouteMatch(uri.path().to_string()))?
+        .value
+        .clone();
     println!("The matching route : {:#?}", &matched_route);
 
     // We retrieve the algorithm, expiration and limit from redis
     let (rl_algo, expiration, limit): (String, u64, u64) = states.redis_connection.lock()?.hmget(
         format!("rules:{}", matched_route),
-        &["algorithm", "expiration", "limit", "troll"],
+        &["algorithm", "expiration", "limit"],
     )?;
 
     println!("All values : {:?}", (&rl_algo, &expiration, &limit));
