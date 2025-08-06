@@ -21,8 +21,9 @@ use matchit::Router as MatchitRouter;
 use redis::Commands;
 
 use crate::{
-    rate_limiter::RateLimiterAlgorithms, rules::generate_dummy_rules,
-    utils::populate_redis_kv_rule_algorithm,
+    rate_limiter::RateLimiterAlgorithms,
+    rules::generate_dummy_rules,
+    utils::{populate_redis_kv_rule_algorithm, populate_redis_with_rules},
 };
 
 struct States {
@@ -37,7 +38,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let dummy_rules = generate_dummy_rules();
 
-    populate_redis_kv_rule_algorithm(&mut redis_connection, &dummy_rules)?;
+    // populate_redis_kv_rule_algorithm(&mut redis_connection, &dummy_rules)?;
+    populate_redis_with_rules(&mut redis_connection, &dummy_rules)?;
 
     dummy_rules.into_iter().for_each(|rule| {
         route_matcher
@@ -86,10 +88,10 @@ async fn limiter_handler(
 
     // Find the algorithm for that route in the redis cache.
 
-    let algorithm = states
+    let algorithm: String = states
         .redis_connection
         .lock()?
-        .get::<&String, String>(&format!("rules_to_algorithms:{}", &matched_route))
+        .hget(format!("rules:{}", matched_route), "algorithm")
         .context("Failed to succesfully retrieve the redis key")?;
 
     println!("Algorithm found: {:#?}", algorithm);

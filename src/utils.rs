@@ -28,3 +28,21 @@ pub fn populate_redis_kv_rule_algorithm(
     }
     Ok(())
 }
+
+pub fn populate_redis_with_rules(
+    conn: &mut redis::Connection,
+    rules: &Vec<Rule>,
+) -> Result<(), RedisError> {
+    for rule in rules {
+        let _: () = conn.hset_multiple(
+            format!("rules:{}", rule.hash),
+            &[("limit", rule.limit), ("expiration", rule.expiration)],
+        )?;
+        let _: () = conn.hset(
+            format!("rules:{}", rule.hash),
+            "algorithm",
+            rule.algorithm.to_string(),
+        )?;
+    }
+    Ok(())
+}
