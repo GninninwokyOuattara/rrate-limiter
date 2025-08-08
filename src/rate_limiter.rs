@@ -117,7 +117,7 @@ impl RateLimiterAlgorithms {
 
                 "#
             }
-            RateLimiterAlgorithms::SlidingWindowCounter => {
+            RateLimiterAlgorithms::SlidingWindowLog => {
                 r#"
                 local k = KEYS[1]
                 local key = k .. ':ss'
@@ -155,7 +155,7 @@ impl RateLimiterAlgorithms {
                 end
                 "#
             }
-            RateLimiterAlgorithms::SlidingWindowLog => todo!(),
+            RateLimiterAlgorithms::SlidingWindowCounter => todo!(),
             RateLimiterAlgorithms::TokenBucket => todo!(),
             RateLimiterAlgorithms::LeakyBucket => todo!(),
         }
