@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anyhow::{Context, anyhow};
+use anyhow::anyhow;
 use axum::{
     Router,
     extract::{Query, Request, State},
@@ -21,9 +21,8 @@ use matchit::Router as MatchitRouter;
 use redis::Commands;
 
 use crate::{
-    rate_limiter::RateLimiterAlgorithms,
-    rules::generate_dummy_rules,
-    utils::{populate_redis_kv_rule_algorithm, populate_redis_with_rules},
+    rate_limiter::RateLimiterAlgorithms, rules::generate_dummy_rules,
+    utils::populate_redis_with_rules,
 };
 
 struct States {
@@ -76,9 +75,10 @@ async fn limiter_handler(
     State(states): State<Arc<States>>,
     request: Request,
 ) -> anyhow::Result<impl IntoResponse, errors::LimiterError> {
-    println!("Received params: {:?}", params);
+    println!("Received params: {:#?}", params);
     let uri = request.uri();
     let _headers = request.headers();
+    println!("Headers :: {:?}", _headers);
 
     // TODO: properly handle the key that should be rate limited.
 
