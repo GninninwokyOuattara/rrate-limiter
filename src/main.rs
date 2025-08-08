@@ -146,8 +146,7 @@ async fn limiter_handler(
         rate_limiting_algorithm,
         limit,
         expiration,
-    )
-    .unwrap();
+    )?;
 
     Ok((axum::http::StatusCode::OK, headers.to_headers(), message))
 }

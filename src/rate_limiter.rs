@@ -1,3 +1,5 @@
+use redis::RedisError;
+
 use crate::utils::make_redis_key;
 
 const FIXED_WINDOW: &str = "fw";
@@ -131,29 +133,23 @@ impl RateLimiter {
         algorithm: RateLimiterAlgorithms,
         limit: u64,
         expiration: u64,
-    ) -> Result<(String, RateLimiterHeaders), ()> {
+    ) -> Result<(String, RateLimiterHeaders), RedisError> {
         let redis_key = make_redis_key(tracked_key, hashed_route, &algorithm);
 
         let script = redis::Script::new(algorithm.get_script());
 
-        let redis_result = script
+        let result = script
             .key(redis_key)
             .arg(limit)
             .arg(expiration)
-            .invoke::<Vec<String>>(&mut redis_connection);
-
-        let result = if let Ok(result) = redis_result {
-            result
-        } else {
-            return Err(());
-        };
+            .invoke::<Vec<String>>(&mut redis_connection)?;
 
         Ok((
             result[3].clone(),
             RateLimiterHeaders::new(
-                result[0].parse().unwrap_or(0),
-                result[1].parse().unwrap_or(0),
-                result[2].parse().unwrap_or(0),
+                result[0].parse().unwrap_or_default(),
+                result[1].parse().unwrap_or_default(),
+                result[2].parse().unwrap_or_default(),
                 algorithm.to_string(),
             ),
         ))
