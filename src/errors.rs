@@ -16,6 +16,9 @@ pub enum LimiterError {
     #[error("No match found for route {0}")]
     NoRouteMatch(String),
 
+    #[error("Tracked key {0} not found in request headers")]
+    TrackedKeyNotFound(String),
+
     #[error("Internal Server Error")]
     RedisError(#[from] RedisError),
 
@@ -34,8 +37,8 @@ impl IntoResponse for LimiterError {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
             LimiterError::NoRouteMatch(_err) => (StatusCode::NOT_FOUND, self.to_string()),
-
             LimiterError::Unknown(_error) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            LimiterError::TrackedKeyNotFound(_) => (StatusCode::BAD_REQUEST, self.to_string()),
         };
         response.into_response()
     }
