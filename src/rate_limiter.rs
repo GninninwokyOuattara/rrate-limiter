@@ -117,8 +117,47 @@ impl RateLimiterAlgorithms {
 
                 "#
             }
-            // Other algorithms can be implemented similarly
-            _ => "",
+            RateLimiterAlgorithms::SlidingWindowCounter => {
+                r#"
+                local k = KEYS[1]
+                local key = k .. ':ss'
+                local key_counter = k .. ':counter'
+                
+                local limit = tonumber(ARGV[1])
+                local expiration = tonumber(ARGV[2])
+                local now = redis.call('TIME')[1]
+                
+                redis.call('ZREMRANGEBYSCORE', key, 0, now - expiration)
+                local count = redis.call('ZCARD', key)
+                redis.call('EXPIRE', key, expiration + 1)
+
+                if count + 1 > limit then
+                    redis.call('EXPIRE', key_counter, expiration + 1)
+                    local remaining = limit - count
+                    local reset = expiration - (now % expiration)
+                    return {
+                        limit,
+                        remaining,
+                        reset,
+                        'Rate limit exceeded.',
+                    }
+                else
+                    redis.call('ZADD', key, now, now .. ':' .. redis.call('INCR', key_counter))
+                    redis.call('EXPIRE', key_counter, expiration + 1)
+                    local remaining = limit - count - 1
+                    local reset = expiration - (now % expiration)
+                    return {
+                        limit,
+                        remaining,
+                        reset,
+                        'Rate limit not exceeded.',
+                    }
+                end
+                "#
+            }
+            RateLimiterAlgorithms::SlidingWindowLog => todo!(),
+            RateLimiterAlgorithms::TokenBucket => todo!(),
+            RateLimiterAlgorithms::LeakyBucket => todo!(),
         }
     }
 }
