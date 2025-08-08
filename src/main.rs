@@ -21,8 +21,9 @@ use matchit::Router as MatchitRouter;
 use redis::Commands;
 
 use crate::{
-    rate_limiter::RateLimiterAlgorithms, rules::generate_dummy_rules,
-    utils::populate_redis_with_rules,
+    rate_limiter::RateLimiterAlgorithms,
+    rules::generate_dummy_rules,
+    utils::{get_tracked_key_from_header, populate_redis_with_rules},
 };
 
 struct States {
@@ -40,6 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // populate_redis_kv_rule_algorithm(&mut redis_connection, &dummy_rules)?;
     populate_redis_with_rules(&mut redis_connection, &dummy_rules)?;
 
+    // Here we are just building the route matcher.
     dummy_rules.into_iter().for_each(|rule| {
         route_matcher
             .insert(rule.route, rule.hash)
@@ -79,6 +81,7 @@ async fn limiter_handler(
     let uri = request.uri();
     let _headers = request.headers();
     println!("Headers :: {:?}", _headers);
+    // let tracking_key = get_tracked_key_from_header(headers, tracking_type, custom_header_key)
 
     // TODO: properly handle the key that should be rate limited.
 
@@ -95,13 +98,41 @@ async fn limiter_handler(
     println!("The matching route : {:#?}", &matched_route);
 
     // We retrieve the algorithm, expiration and limit from redis
-    let (rl_algo, expiration, limit): (String, u64, u64) = states.redis_connection.lock()?.hmget(
+    let (rl_algo, expiration, limit, custom_tracking_key, tracking_type): (
+        String,
+        u64,
+        u64,
+        String,
+        String,
+    ) = states.redis_connection.lock()?.hmget(
         format!("rules:{}", matched_route),
-        &["algorithm", "expiration", "limit"],
+        &[
+            "algorithm",
+            "expiration",
+            "limit",
+            "custom_tracking_key",
+            "tracking_type",
+        ],
     )?;
 
-    println!("All values : {:?}", (&rl_algo, &expiration, &limit));
-    println!("Algorithm found: {:#?}", &rl_algo);
+    println!(
+        "All values : {:?}",
+        (
+            &rl_algo,
+            &expiration,
+            &limit,
+            &custom_tracking_key,
+            &tracking_type
+        )
+    );
+
+    let tracking_key = get_tracked_key_from_header(
+        &request.headers(),
+        &tracking_type.into(),
+        custom_tracking_key.into(),
+    )?;
+
+    println!("The tracking key extracted is :: {}", &tracking_key);
 
     // Where the rate limiting happens.
     let Ok(rate_limiting_algorithm) = RateLimiterAlgorithms::from_string(&rl_algo) else {
@@ -110,7 +141,7 @@ async fn limiter_handler(
 
     let (message, headers) = rate_limiter::RateLimiter::check(
         &mut states.redis_connection.lock().unwrap(),
-        &"limitkey",
+        &tracking_key,
         &matched_route,
         rate_limiting_algorithm,
         limit,
