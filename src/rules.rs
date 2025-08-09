@@ -53,7 +53,7 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             id: "user2".to_string(),
             route: "/api/v1/orders".to_string(),
             hash: "2ba810480dabb4007ddb8108a0ef8d55".to_string(),
-            algorithm: RateLimiterAlgorithms::SlidingWindowLog,
+            algorithm: RateLimiterAlgorithms::SlidingWindowCounter,
             limit: 50,
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,

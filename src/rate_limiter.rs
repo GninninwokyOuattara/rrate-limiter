@@ -155,7 +155,72 @@ impl RateLimiterAlgorithms {
                 end
                 "#
             }
-            RateLimiterAlgorithms::SlidingWindowCounter => todo!(),
+            RateLimiterAlgorithms::SlidingWindowCounter => {
+                r#"
+                local key = KEYS[1]
+                local limit = tonumber(ARGV[1])
+                local expiration = tonumber(ARGV[2])
+                local now = redis.call('TIME')[1]
+                local mod_value = expiration * 3 -- we got three buckets of 'expiration' seconds each
+
+                -- verify that the buckets exists
+                if redis.call('EXISTS', key, 0) == 0 then
+                    redis.call('HMSET', key, '0', '0', '1', '0', '2', '0')
+                    redis.call('EXPIRE', key, expiration + 1)
+                else
+                    redis.call('EXPIRE', key, expiration + 1)
+                end
+
+                local normalized_now = now % mod_value
+                local current_bucket = 0
+                if normalized_now <= expiration then
+                    current_bucket = 0
+                elseif normalized_now <= expiration * 2 then
+                    current_bucket = 1
+                else
+                    current_bucket = 2
+                end
+
+                local normalized_to_window = normalized_now % expiration
+                local percentage_in_bucket = normalized_to_window / expiration
+                
+                local previous_bucket = current_bucket - 1
+                if previous_bucket < 0 then
+                    previous_bucket = 2
+                end
+
+                local next_bucket = current_bucket + 1
+                if next_bucket > 2 then
+                    next_bucket = 0
+                end
+                
+                redis.call('HSET', key, next_bucket, 0)
+                local previous_bucket_count = redis.call('HGET', key, previous_bucket)
+                local current_bucket_count = redis.call('HGET', key, current_bucket)
+
+                local weight = (1-percentage_in_bucket) * tonumber(previous_bucket_count) + tonumber(current_bucket_count)
+                if weight > limit then
+                    local remaining = 0
+                    local reset = expiration - (now % expiration)
+                    return {
+                        limit,
+                        remaining,
+                        reset,
+                        'Rate limit exceeded.',
+                    }
+                else
+                    redis.call('HINCRBY', key, current_bucket, 1)
+                    local remaining = limit - (1-percentage_in_bucket) * tonumber(previous_bucket_count) - tonumber(current_bucket_count) - 1
+                    local reset = expiration - (now % expiration)
+                    return {
+                        limit,
+                        remaining,
+                        reset,
+                        'Rate limit not exceeded.',
+                    }
+                end
+                "#
+            }
             RateLimiterAlgorithms::TokenBucket => todo!(),
             RateLimiterAlgorithms::LeakyBucket => todo!(),
         }
