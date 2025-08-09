@@ -30,10 +30,10 @@ pub enum LimiterError {
 
 impl IntoResponse for LimiterError {
     fn into_response(self) -> Response<Body> {
-        println!("Error {:?}", &self.to_string());
+        //println!("Error {:?}", &self.to_string());
         let response = match &self {
             LimiterError::RedisError(_err) => {
-                println!("Redis Error : {:?}", _err);
+                //println!("Redis Error : {:?}", _err);
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
             LimiterError::NoRouteMatch(_err) => (StatusCode::NOT_FOUND, self.to_string()),
