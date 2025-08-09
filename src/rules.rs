@@ -79,5 +79,60 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             tracking_type: LimiterTrackingType::Custom,
             custom_tracking_key: Some("x-api-key".to_string()),
         },
+        Rule {
+            // FIXED WINDOW TEST
+            id: "user2".to_string(),
+            route: "/api/v1/fw".to_string(),
+            hash: "fixed".to_string(),
+            algorithm: RateLimiterAlgorithms::FixedWindow,
+            limit: 50,
+            expiration: 120,
+            tracking_type: LimiterTrackingType::IP,
+            custom_tracking_key: None,
+        },
+        Rule {
+            // SLIDING WINDOW LOG TEST
+            id: "user2".to_string(),
+            route: "/api/v1/swl".to_string(),
+            hash: "log".to_string(),
+            algorithm: RateLimiterAlgorithms::SlidingWindowLog,
+            limit: 50,
+            expiration: 120,
+            tracking_type: LimiterTrackingType::IP,
+            custom_tracking_key: None,
+        },
+        Rule {
+            // SLIDING WINDOW COUNTER TEST
+            id: "user2".to_string(),
+            route: "/api/v1/swc".to_string(),
+            hash: "counter".to_string(),
+            algorithm: RateLimiterAlgorithms::SlidingWindowCounter,
+            limit: 50,
+            expiration: 120,
+            tracking_type: LimiterTrackingType::IP,
+            custom_tracking_key: None,
+        },
+        Rule {
+            // TOKEN BUCKET TEST
+            id: "user2".to_string(),
+            route: "/api/v1/tb".to_string(),
+            hash: "token".to_string(),
+            algorithm: RateLimiterAlgorithms::TokenBucket,
+            limit: 50,
+            expiration: 120,
+            tracking_type: LimiterTrackingType::IP,
+            custom_tracking_key: None,
+        },
+        Rule {
+            // LEAKY BUCKET TEST
+            id: "user2".to_string(),
+            route: "/api/v1/lb".to_string(),
+            hash: "leaky".to_string(),
+            algorithm: RateLimiterAlgorithms::LeakyBucket,
+            limit: 50,
+            expiration: 120,
+            tracking_type: LimiterTrackingType::IP,
+            custom_tracking_key: None,
+        },
     ]
 }
