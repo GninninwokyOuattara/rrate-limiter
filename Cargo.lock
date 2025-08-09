@@ -639,6 +639,7 @@ dependencies = [
  "axum",
  "axum-macros",
  "matchit",
+ "parking_lot",
  "redis",
  "thiserror",
  "tokio",
