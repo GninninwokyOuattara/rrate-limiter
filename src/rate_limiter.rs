@@ -52,7 +52,7 @@ impl RateLimiterAlgorithms {
         match self {
             RateLimiterAlgorithms::FixedWindow => FIXED_WINDOW.to_string(),
             RateLimiterAlgorithms::SlidingWindowCounter => SLIDING_WINDOW_COUNTER.to_string(),
-            RateLimiterAlgorithms::SlidingWindowLog => SLIDING_WINDOW_COUNTER.to_string(),
+            RateLimiterAlgorithms::SlidingWindowLog => SLIDING_WINDOW_LOG.to_string(),
             RateLimiterAlgorithms::TokenBucket => TOKEN_BUCKET.to_string(),
             RateLimiterAlgorithms::LeakyBucket => LEAKY_BUCKET.to_string(),
         }
