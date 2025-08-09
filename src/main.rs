@@ -139,14 +139,17 @@ async fn limiter_handler(
         return Err(anyhow!("Could not convert cache key to local algorithm").into());
     };
 
-    let (message, headers) = rate_limiter::RateLimiter::check(
-        &mut states.redis_connection.lock().unwrap(),
-        &tracking_key,
-        &matched_route,
-        rate_limiting_algorithm,
-        limit,
-        expiration,
-    )?;
+    let (message, headers) = {
+        let mut connection = states.redis_connection.lock()?;
+        rate_limiter::RateLimiter::check(
+            &mut connection,
+            &tracking_key,
+            &matched_route,
+            rate_limiting_algorithm,
+            limit,
+            expiration,
+        )?
+    };
 
     Ok((axum::http::StatusCode::OK, headers.to_headers(), message))
 }
