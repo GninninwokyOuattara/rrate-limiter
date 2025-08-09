@@ -209,7 +209,50 @@ impl RateLimiterAlgorithms {
                 "#
             }
             RateLimiterAlgorithms::TokenBucket => todo!(),
-            RateLimiterAlgorithms::LeakyBucket => todo!(),
+            RateLimiterAlgorithms::LeakyBucket => {
+                r#"
+                local key = KEYS[1]
+                local limit = tonumber(ARGV[1])
+                local expiration = tonumber(ARGV[2])
+                local now = tonumber(redis.call('TIME')[1])
+                local drop_rate = limit / expiration
+
+
+                -- init the leaky bucket
+                redis.call('HSETNX', key, 'count', 0)
+                redis.call('HSETNX', key, 'last_rq_timestamp', now)
+                redis.call('EXPIRE', key, expiration, 'NX')
+
+                local ttl = redis.call('TTL', key)
+                
+                local elapsed = now - tonumber(redis.call('HGET', key, 'last_rq_timestamp'))
+                local request_lazily_dropped = elapsed * drop_rate
+                
+                local current_count = tonumber(redis.call('HGET', key, 'count'))
+                local new_count = math.max(0, current_count - request_lazily_dropped)
+
+                redis.call('HSET', key, 'count', new_count) 
+
+
+                if new_count + 1 > limit then
+                    return {
+                        limit,
+                        0,
+                        ttl,
+                        'Rate limit exceeded.',
+                    }
+                else 
+                    redis.call('HSET', key, 'count', new_count + 1)
+                    redis.call('HSET', key, 'last_rq_timestamp', now)
+                    return {
+                        limit,
+                        limit - math.ceil(new_count) - 1,
+                        ttl,
+                        'Rate limit not exceeded.',
+                    }
+                end
+                "#
+            }
         }
     }
 }
