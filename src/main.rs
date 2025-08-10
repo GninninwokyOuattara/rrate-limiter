@@ -1,3 +1,7 @@
+// TODO: Document on example of axum app from the git https://github.com/tokio-rs/axum/blob/main/examples/tokio-redis/src/main.rs
+// TODO : Look well into the pool management bb8
+// TODO : Implement with the connexion pool and benchmark again to see the difference. (hopefully some gains)
+
 use anyhow::anyhow;
 use axum::{
     Router,
