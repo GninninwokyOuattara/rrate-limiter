@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 axum = "0.8.4"
 tokio = { version = "1.47.1", features = ["full"] }
-tracing-subscriber = "0.3.17"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 redis = "0.32.4"
 matchit = "0.8.4" # Axum require this version
 axum-macros = "0.5.0"
@@ -15,4 +15,5 @@ anyhow = "1.0.98"
 parking_lot = "0.12.4"
 bb8 = "0.9.0"
 bb8-redis = "0.24.0"
+tracing = "0.1.41"
 
