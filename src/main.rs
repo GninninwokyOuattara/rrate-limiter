@@ -11,13 +11,12 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use matchit::Router as MatchitRouter;
-use parking_lot::Mutex;
-use redis::Commands;
 use std::sync::Arc;
+use tracing::info;
 
 use bb8::{Pool, PooledConnection};
 use bb8_redis::RedisConnectionManager;
-use redis::AsyncCommands;
+use redis::{AsyncCommands, RedisError};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod errors;
@@ -27,9 +26,9 @@ mod utils;
 
 use crate::{
     errors::LimiterError,
-    rate_limiter::RateLimiterAlgorithms,
+    rate_limiter::{RateLimiter, RateLimiterAlgorithms, RateLimiterHeaders},
     rules::generate_dummy_rules,
-    utils::{get_tracked_key_from_header, populate_redis_with_rules},
+    utils::{get_tracked_key_from_header, make_redis_key, populate_redis_with_rules},
 };
 
 struct States {
@@ -85,8 +84,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .fallback(get(limiter_handler))
         .with_state(states.clone());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-    axum::serve(listener, app).await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
     Ok(())
 }
 
@@ -100,12 +99,12 @@ fn connect_to_redis() -> Result<redis::Connection, Box<dyn std::error::Error>> {
 async fn limiter_handler(
     State(states): State<Arc<States>>,
     request: Request,
-) -> anyhow::Result<impl IntoResponse, errors::LimiterError> {
+) -> anyhow::Result<impl IntoResponse, LimiterError> {
     let uri = request.uri();
     let _headers = request.headers();
     let mut redis_connection = states.pool.get_owned().await.map_err(|error| match error {
-        bb8::RunError::User(err) => errors::LimiterError::RedisError(err),
-        bb8::RunError::TimedOut => errors::LimiterError::Unknown(anyhow!("Timed out")),
+        bb8::RunError::User(err) => LimiterError::RedisError(err),
+        bb8::RunError::TimedOut => LimiterError::Unknown(anyhow!("Timed out")),
     })?;
 
     // Finding which pattern match the uri using the matcher
@@ -115,10 +114,11 @@ async fn limiter_handler(
         .route_matcher
         .clone()
         .at(uri.path())
-        .map_err(|_err| errors::LimiterError::NoRouteMatch(uri.path().to_string()))?
+        .map_err(|_err| LimiterError::NoRouteMatch(uri.path().to_string()))?
         .value
         .clone();
 
+    /* */
     // We retrieve the algorithm, expiration and limit from redis
 
     let (rl_algo, expiration, limit, custom_tracking_key, tracking_type): (
@@ -151,7 +151,7 @@ async fn limiter_handler(
         return Err(anyhow!("Could not convert cache key to local algorithm").into());
     };
 
-    let (message, headers) = rate_limiter::RateLimiter::check_bb8_pool(
+    let (message, headers) = RateLimiter::check_bb8_pool(
         redis_connection,
         &tracking_key,
         &matched_route,
@@ -161,5 +161,28 @@ async fn limiter_handler(
     )
     .await?;
 
-    Ok((axum::http::StatusCode::OK, headers.to_headers(), message))
+    // info!("Message: {}", message);
+    match message.as_str() {
+        "Rate limit exceeded." => {
+            return Ok((
+                axum::http::StatusCode::TOO_MANY_REQUESTS,
+                headers.to_headers(),
+                message,
+            ));
+        }
+        "Rate limit not exceeded." => {
+            return Ok((axum::http::StatusCode::OK, headers.to_headers(), message));
+        }
+        _ => {
+            return Ok((
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                headers.to_headers(),
+                message,
+            ));
+        }
+    }
+
+    /* Ok((axum::http::StatusCode::OK, headers.to_headers(), message)) */
+
+    // Ok(())
 }
