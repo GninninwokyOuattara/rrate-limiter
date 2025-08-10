@@ -134,5 +134,16 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
         },
+        Rule {
+            // Direct
+            id: "user2".to_string(),
+            route: "/api/v1/direct".to_string(),
+            hash: "leaky".to_string(),
+            algorithm: RateLimiterAlgorithms::SlidingWindowLog,
+            limit: 50,
+            expiration: 5,
+            tracking_type: LimiterTrackingType::Custom,
+            custom_tracking_key: Some("foo".to_string()),
+        },
     ]
 }

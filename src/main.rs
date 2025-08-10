@@ -33,7 +33,6 @@ use crate::{
 };
 
 struct States {
-    redis_connection: Arc<Mutex<redis::Connection>>,
     route_matcher: Arc<matchit::Router<String>>,
     pool: Pool<RedisConnectionManager>,
 }
@@ -77,7 +76,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::debug!("successfully connected to redis and pinged it");
 
     let states = Arc::new(States {
-        redis_connection: Arc::new(Mutex::new(redis_connection)),
         route_matcher: Arc::new(route_matcher),
         pool: pool,
     });
