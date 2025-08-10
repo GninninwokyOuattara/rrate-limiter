@@ -1,4 +1,6 @@
-use redis::RedisError;
+use bb8::PooledConnection;
+use bb8_redis::RedisConnectionManager;
+use redis::{AsyncCommands, AsyncTypedCommands, RedisError};
 
 use crate::utils::make_redis_key;
 
@@ -320,6 +322,36 @@ impl RateLimiter {
             .arg(limit)
             .arg(expiration)
             .invoke::<Vec<String>>(&mut redis_connection)?;
+
+        Ok((
+            result[3].clone(),
+            RateLimiterHeaders::new(
+                result[0].parse().unwrap_or_default(),
+                result[1].parse().unwrap_or_default(),
+                result[2].parse().unwrap_or_default(),
+                algorithm.to_string(),
+            ),
+        ))
+    }
+
+    pub async fn check_bb8_pool(
+        mut bb8_pool: PooledConnection<'_, RedisConnectionManager>,
+        tracked_key: &str,
+        hashed_route: &str,
+        algorithm: RateLimiterAlgorithms,
+        limit: u64,
+        expiration: u64,
+    ) -> Result<(String, RateLimiterHeaders), RedisError> {
+        let redis_key = make_redis_key(tracked_key, hashed_route, &algorithm);
+        let script = redis::Script::new(algorithm.get_script());
+
+        let result: Vec<String> = script
+            .key(redis_key)
+            .arg(limit)
+            .arg(expiration)
+            .invoke_async(&mut *bb8_pool)
+            .await
+            .unwrap();
 
         Ok((
             result[3].clone(),
