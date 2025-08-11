@@ -139,7 +139,7 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             id: "user2".to_string(),
             route: "/api/v1/direct".to_string(),
             hash: "leaky".to_string(),
-            algorithm: RateLimiterAlgorithms::SlidingWindowLog,
+            algorithm: RateLimiterAlgorithms::FixedWindow,
             limit: 50,
             expiration: 5,
             tracking_type: LimiterTrackingType::Custom,

@@ -16,7 +16,7 @@ use tracing::info;
 
 use bb8::{Pool, PooledConnection};
 use bb8_redis::RedisConnectionManager;
-use redis::{AsyncCommands, RedisError};
+use redis::{AsyncCommands, RedisError, aio::MultiplexedConnection};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod errors;
@@ -33,18 +33,26 @@ use crate::{
 
 struct States {
     route_matcher: Arc<matchit::Router<String>>,
-    pool: Pool<RedisConnectionManager>,
+    pool: MultiplexedConnection,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut redis_connection = connect_to_redis()?;
+    tracing::debug!("connecting to redis");
+
+    let client = redis::Client::open("redis://127.0.0.1/").unwrap();
+    let con = client.get_multiplexed_async_connection().await?;
+
+    tracing::debug!("successfully connected to redis and pinged it");
+    // let mut redis_connection = connect_to_redis()?;
     let mut route_matcher = MatchitRouter::new();
 
     let dummy_rules = generate_dummy_rules();
 
     // populate_redis_kv_rule_algorithm(&mut redis_connection, &dummy_rules)?;
-    populate_redis_with_rules(&mut redis_connection, &dummy_rules)?;
+    populate_redis_with_rules(con.clone(), &dummy_rules)
+        .await
+        .unwrap();
 
     // Here we are just building the route matcher.
     dummy_rules.into_iter().for_each(|rule| {
@@ -61,22 +69,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    tracing::debug!("connecting to redis");
-    let manager = RedisConnectionManager::new("redis://localhost").unwrap();
-    let pool = bb8::Pool::builder().build(manager).await.unwrap();
-
-    {
-        // ping the database before starting
-        let mut conn = pool.get().await.unwrap();
-        conn.set::<&str, &str, ()>("foo", "bar").await.unwrap();
-        let result: String = conn.get("foo").await.unwrap();
-        assert_eq!(result, "bar");
-    }
-    tracing::debug!("successfully connected to redis and pinged it");
-
     let states = Arc::new(States {
         route_matcher: Arc::new(route_matcher),
-        pool: pool,
+        pool: con,
     });
 
     let app = Router::new()
@@ -102,10 +97,6 @@ async fn limiter_handler(
 ) -> anyhow::Result<impl IntoResponse, LimiterError> {
     let uri = request.uri();
     let _headers = request.headers();
-    let mut redis_connection = states.pool.get_owned().await.map_err(|error| match error {
-        bb8::RunError::User(err) => LimiterError::RedisError(err),
-        bb8::RunError::TimedOut => LimiterError::Unknown(anyhow!("Timed out")),
-    })?;
 
     // Finding which pattern match the uri using the matcher
 
@@ -127,7 +118,9 @@ async fn limiter_handler(
         u64,
         String,
         String,
-    ) = redis_connection
+    ) = states
+        .pool
+        .clone()
         .hmget(
             format!("rules:{}", matched_route),
             &[
@@ -151,8 +144,8 @@ async fn limiter_handler(
         return Err(anyhow!("Could not convert cache key to local algorithm").into());
     };
 
-    let (message, headers) = RateLimiter::check_bb8_pool(
-        redis_connection,
+    let (message, headers) = check_strong(
+        states.pool.clone(),
         &tracking_key,
         &matched_route,
         rate_limiting_algorithm,
@@ -161,7 +154,6 @@ async fn limiter_handler(
     )
     .await?;
 
-    // info!("Message: {}", message);
     match message.as_str() {
         "Rate limit exceeded." => {
             return Ok((
@@ -182,7 +174,35 @@ async fn limiter_handler(
         }
     }
 
-    /* Ok((axum::http::StatusCode::OK, headers.to_headers(), message)) */
+    // Ok((axum::http::StatusCode::OK, headers.to_headers(), message))
+}
 
-    // Ok(())
+pub async fn check_strong(
+    mut pool: MultiplexedConnection,
+    tracked_key: &str,
+    hashed_route: &str,
+    algorithm: RateLimiterAlgorithms,
+    limit: u64,
+    expiration: u64,
+) -> Result<(String, RateLimiterHeaders), RedisError> {
+    let redis_key = make_redis_key(tracked_key, hashed_route, &algorithm);
+    let script = redis::Script::new(algorithm.get_script());
+
+    let result: Vec<String> = script
+        .key(redis_key)
+        .arg(limit)
+        .arg(expiration)
+        .invoke_async(&mut pool)
+        .await
+        .unwrap();
+
+    Ok((
+        result[3].clone(),
+        RateLimiterHeaders::new(
+            result[0].parse().unwrap_or_default(),
+            result[1].parse().unwrap_or_default(),
+            result[2].parse().unwrap_or_default(),
+            algorithm.to_string(),
+        ),
+    ))
 }

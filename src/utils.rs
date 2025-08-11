@@ -1,6 +1,6 @@
 use anyhow::Context;
 use axum::http::HeaderMap;
-use redis::{Commands, RedisError};
+use redis::{AsyncCommands, Commands, RedisError, aio::MultiplexedConnection};
 
 use crate::{
     errors,
@@ -35,30 +35,36 @@ pub fn populate_redis_kv_rule_algorithm(
     Ok(())
 }
 
-pub fn populate_redis_with_rules(
-    conn: &mut redis::Connection,
+pub async fn populate_redis_with_rules(
+    mut conn: MultiplexedConnection,
     rules: &Vec<Rule>,
 ) -> Result<(), RedisError> {
     for rule in rules {
         // set the integers fields
-        let _: () = conn.hset_multiple(
-            format!("rules:{}", rule.hash),
-            &[("limit", rule.limit), ("expiration", rule.expiration)],
-        )?;
+        let _: () = conn
+            .hset_multiple(
+                format!("rules:{}", rule.hash),
+                &[("limit", rule.limit), ("expiration", rule.expiration)],
+            )
+            .await
+            .unwrap();
 
         // Set the string fields.
         let tracking_type: String = rule.tracking_type.clone().into();
-        let _: () = conn.hset_multiple(
-            format!("rules:{}", rule.hash),
-            &[
-                ("algorithm", rule.algorithm.to_string()),
-                ("tracking_type", tracking_type),
-                (
-                    "custom_tracking_key",
-                    rule.custom_tracking_key.clone().unwrap_or("".to_string()),
-                ),
-            ],
-        )?;
+        let _: () = conn
+            .hset_multiple(
+                format!("rules:{}", rule.hash),
+                &[
+                    ("algorithm", rule.algorithm.to_string()),
+                    ("tracking_type", tracking_type),
+                    (
+                        "custom_tracking_key",
+                        rule.custom_tracking_key.clone().unwrap_or("".to_string()),
+                    ),
+                ],
+            )
+            .await
+            .unwrap();
     }
     Ok(())
 }
