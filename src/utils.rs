@@ -1,6 +1,6 @@
 use anyhow::Context;
 use axum::http::HeaderMap;
-use redis::{AsyncCommands, Commands, RedisError, aio::MultiplexedConnection};
+use redis::{AsyncCommands, Commands, RedisError, aio::ConnectionManager};
 
 use crate::{
     errors,
@@ -22,7 +22,7 @@ pub fn make_redis_key(
     )
 }
 
-pub fn populate_redis_kv_rule_algorithm(
+pub fn _populate_redis_kv_rule_algorithm(
     conn: &mut redis::Connection,
     rules: &Vec<Rule>,
 ) -> Result<(), RedisError> {
@@ -36,7 +36,7 @@ pub fn populate_redis_kv_rule_algorithm(
 }
 
 pub async fn populate_redis_with_rules(
-    mut conn: MultiplexedConnection,
+    mut conn: ConnectionManager,
     rules: &Vec<Rule>,
 ) -> Result<(), RedisError> {
     for rule in rules {

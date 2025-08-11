@@ -1,6 +1,4 @@
-use bb8::PooledConnection;
-use bb8_redis::RedisConnectionManager;
-use redis::{AsyncCommands, AsyncTypedCommands, RedisError};
+use redis::{RedisError, aio::ConnectionManager};
 
 use crate::utils::make_redis_key;
 
@@ -60,7 +58,7 @@ impl RateLimiterAlgorithms {
         }
     }
 
-    pub fn to_str(&self) -> &str {
+    pub fn _to_str(&self) -> &str {
         match self {
             RateLimiterAlgorithms::FixedWindow => FIXED_WINDOW,
             RateLimiterAlgorithms::SlidingWindowCounter => SLIDING_WINDOW_COUNTER,
@@ -302,65 +300,32 @@ impl RateLimiterAlgorithms {
     }
 }
 
-pub struct RateLimiter {}
+pub async fn execute_rate_limiting(
+    mut pool: ConnectionManager,
+    tracked_key: &str,
+    hashed_route: &str,
+    algorithm: RateLimiterAlgorithms,
+    limit: u64,
+    expiration: u64,
+) -> Result<(String, RateLimiterHeaders), RedisError> {
+    let redis_key = make_redis_key(tracked_key, hashed_route, &algorithm);
+    let script = redis::Script::new(algorithm.get_script());
 
-impl RateLimiter {
-    pub fn check(
-        mut redis_connection: &mut redis::Connection,
-        tracked_key: &str,
-        hashed_route: &str,
-        algorithm: RateLimiterAlgorithms,
-        limit: u64,
-        expiration: u64,
-    ) -> Result<(String, RateLimiterHeaders), RedisError> {
-        let redis_key = make_redis_key(tracked_key, hashed_route, &algorithm);
+    let result: Vec<String> = script
+        .key(redis_key)
+        .arg(limit)
+        .arg(expiration)
+        .invoke_async(&mut pool)
+        .await
+        .unwrap();
 
-        let script = redis::Script::new(algorithm.get_script());
-
-        let result = script
-            .key(redis_key)
-            .arg(limit)
-            .arg(expiration)
-            .invoke::<Vec<String>>(&mut redis_connection)?;
-
-        Ok((
-            result[3].clone(),
-            RateLimiterHeaders::new(
-                result[0].parse().unwrap_or_default(),
-                result[1].parse().unwrap_or_default(),
-                result[2].parse().unwrap_or_default(),
-                algorithm.to_string(),
-            ),
-        ))
-    }
-
-    pub async fn check_bb8_pool(
-        mut bb8_pool: PooledConnection<'_, RedisConnectionManager>,
-        tracked_key: &str,
-        hashed_route: &str,
-        algorithm: RateLimiterAlgorithms,
-        limit: u64,
-        expiration: u64,
-    ) -> Result<(String, RateLimiterHeaders), RedisError> {
-        let redis_key = make_redis_key(tracked_key, hashed_route, &algorithm);
-        let script = redis::Script::new(algorithm.get_script());
-
-        let result: Vec<String> = script
-            .key(redis_key)
-            .arg(limit)
-            .arg(expiration)
-            .invoke_async(&mut *bb8_pool)
-            .await
-            .unwrap();
-
-        Ok((
-            result[3].clone(),
-            RateLimiterHeaders::new(
-                result[0].parse().unwrap_or_default(),
-                result[1].parse().unwrap_or_default(),
-                result[2].parse().unwrap_or_default(),
-                algorithm.to_string(),
-            ),
-        ))
-    }
+    Ok((
+        result[3].clone(),
+        RateLimiterHeaders::new(
+            result[0].parse().unwrap_or_default(),
+            result[1].parse().unwrap_or_default(),
+            result[2].parse().unwrap_or_default(),
+            algorithm.to_string(),
+        ),
+    ))
 }

@@ -7,7 +7,7 @@ edition = "2024"
 axum = "0.8.4"
 tokio = { version = "1.47.1", features = ["full"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-redis = "0.32.4"
+redis = {version = "0.32.4", features = ["connection-manager"]}
 matchit = "0.8.4" # Axum require this version
 axum-macros = "0.5.0"
 thiserror = "2.0.12"
