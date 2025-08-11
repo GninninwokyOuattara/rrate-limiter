@@ -93,6 +93,8 @@ async fn limiter_handler(
         .value
         .clone();
 
+    // TODO : A preamptive check to see if the rate limit is already reached. Will allow for early return.
+
     // We retrieve the algorithm, expiration and limit from redis
     let (rl_algo, expiration, limit, custom_tracking_key, tracking_type): (
         String,
