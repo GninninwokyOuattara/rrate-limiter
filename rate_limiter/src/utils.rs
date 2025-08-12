@@ -120,8 +120,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: Some("product_key".to_string()),
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
         Rule {
             id: "user2".to_string(),
@@ -134,8 +134,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
         Rule {
             id: "user2".to_string(),
@@ -148,8 +148,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: Some("x-api-key".to_string()),
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
         Rule {
             id: "user3".to_string(),
@@ -162,8 +162,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: Some("x-api-key".to_string()),
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
         Rule {
             // FIXED WINDOW TEST
@@ -177,8 +177,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
         Rule {
             // SLIDING WINDOW LOG TEST
@@ -192,8 +192,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
         Rule {
             // SLIDING WINDOW COUNTER TEST
@@ -207,8 +207,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
         Rule {
             // TOKEN BUCKET TEST
@@ -222,8 +222,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
         Rule {
             // LEAKY BUCKET TEST
@@ -237,8 +237,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
         Rule {
             // Direct
@@ -252,8 +252,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: Some("foo".to_string()),
             status: true,
             ttl: 60,
-            date_creation: 1223244,
-            date_modification: 1344555,
+            date_creation: "1223244".to_string(),
+            date_modification: "1344555".to_string(),
         },
     ]
 }

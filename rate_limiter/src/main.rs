@@ -7,7 +7,7 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use matchit::Router as MatchitRouter;
-use rrl_core::RateLimiterAlgorithms;
+use rrl_core::{LimiterTrackingType, RateLimiterAlgorithms};
 use std::sync::Arc;
 
 use redis::{AsyncCommands, aio::ConnectionManager};
@@ -116,9 +116,12 @@ async fn limiter_handler(
         )
         .await?;
 
+    let tracking_type: LimiterTrackingType =
+        tracking_type.try_into().map_err(|err| anyhow!("{err}"))?;
+
     let tracking_key = get_tracked_key_from_header(
         &request.headers(),
-        &tracking_type.into(),
+        &tracking_type,
         custom_tracking_key.into(),
     )?;
 

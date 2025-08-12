@@ -253,3 +253,54 @@ impl RateLimiterAlgorithms {
         }
     }
 }
+
+impl TryFrom<String> for RateLimiterAlgorithms {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            FIXED_WINDOW => Ok(RateLimiterAlgorithms::FixedWindow),
+            SLIDING_WINDOW_COUNTER => Ok(RateLimiterAlgorithms::SlidingWindowCounter),
+            SLIDING_WINDOW_LOG => Ok(RateLimiterAlgorithms::SlidingWindowLog),
+            TOKEN_BUCKET => Ok(RateLimiterAlgorithms::TokenBucket),
+            LEAKY_BUCKET => Ok(RateLimiterAlgorithms::LeakyBucket),
+            _ => Err(format!("{} is not a valid algorithm.", value)),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum LimiterTrackingType {
+    IP,     // Should be tracked by the ip address of the requester
+    Custom, // A custom header should be tracked
+}
+
+// impl From<String> for LimiterTrackingType {
+//     fn from(value: String) -> Self {
+//         match value.as_str() {
+//             "custom" => LimiterTrackingType::Custom,
+//             _ => LimiterTrackingType::IP, // Ip is the default
+//         }
+//     }
+// }
+
+impl TryFrom<String> for LimiterTrackingType {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "custom" => Ok(LimiterTrackingType::Custom),
+            "ip" => Ok(LimiterTrackingType::IP), // Ip should be the default
+            _ => Err(format!("{value} is not a valid tracking type.")),
+        }
+    }
+}
+
+impl From<LimiterTrackingType> for String {
+    fn from(value: LimiterTrackingType) -> Self {
+        match value {
+            LimiterTrackingType::Custom => "custom".to_string(),
+            LimiterTrackingType::IP => "ip".to_string(),
+        }
+    }
+}

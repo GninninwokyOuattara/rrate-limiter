@@ -1,39 +1,40 @@
-use crate::rate_limiter::RateLimiterAlgorithms;
+use tokio_postgres::Row;
 
-#[derive(Clone)]
-pub enum LimiterTrackingType {
-    IP,     // Should be tracked by the ip address of the requester
-    Custom, // A custom header should be tracked
-}
-
-impl From<String> for LimiterTrackingType {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "custom" => LimiterTrackingType::Custom,
-            _ => LimiterTrackingType::IP, // Ip is the default
-        }
-    }
-}
-
-impl From<LimiterTrackingType> for String {
-    fn from(value: LimiterTrackingType) -> Self {
-        match value {
-            LimiterTrackingType::Custom => "custom".to_string(),
-            LimiterTrackingType::IP => "ip".to_string(),
-        }
-    }
-}
+use crate::{LimiterTrackingType, rate_limiter::RateLimiterAlgorithms};
 
 pub struct Rule {
     pub id: String,                       // The key to be rate limited
     pub route: String,                    // the endpoint : pattern like route
     pub algorithm: RateLimiterAlgorithms, // The algorithm to use
-    pub limit: u64,                       // The maximum number of requests
-    pub expiration: u64,                  // The time window for the rate limit
+    pub limit: u32,                       // The maximum number of requests
+    pub expiration: u32,                  // The time window for the rate limit
     pub tracking_type: LimiterTrackingType,
     pub custom_tracking_key: Option<String>,
     pub status: bool,
-    pub ttl: u64,
-    pub date_creation: u64,
-    pub date_modification: u64,
+    pub ttl: u32,
+    pub date_creation: String,
+    pub date_modification: String,
+}
+
+impl TryFrom<Row> for Rule {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(value: Row) -> Result<Self, Self::Error> {
+        let algorithm: RateLimiterAlgorithms = value.get::<_, String>("algorithm").try_into()?;
+        let tracking_type: LimiterTrackingType =
+            value.get::<_, String>("tracking_type").try_into()?;
+        Ok(Rule {
+            id: value.get("id"),
+            route: value.get("route"),
+            algorithm,
+            tracking_type,
+            limit: value.get("limit"),
+            expiration: value.get("expiration"),
+            custom_tracking_key: value.get("custom_tracking_key"),
+            status: value.get("status"),
+            ttl: value.get("ttl"),
+            date_creation: value.get("date_creation"),
+            date_modification: value.get("date_modification"),
+        })
+    }
 }
