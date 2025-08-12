@@ -4,6 +4,7 @@ const SLIDING_WINDOW_LOG: &str = "swl";
 const LEAKY_BUCKET: &str = "lb";
 const TOKEN_BUCKET: &str = "tb";
 
+#[derive(Debug)]
 pub enum RateLimiterAlgorithms {
     FixedWindow,
     SlidingWindowCounter,
@@ -269,7 +270,7 @@ impl TryFrom<String> for RateLimiterAlgorithms {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum LimiterTrackingType {
     IP,     // Should be tracked by the ip address of the requester
     Custom, // A custom header should be tracked

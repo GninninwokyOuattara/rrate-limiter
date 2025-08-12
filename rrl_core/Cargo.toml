@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tokio-postgres = "0.7.13"
+tokio-postgres = {version = "0.7.13", features = ["with-uuid-1"]}
 thiserror = "2.0.12"
 serde = "1.0.219"
+uuid = "1.18.0"

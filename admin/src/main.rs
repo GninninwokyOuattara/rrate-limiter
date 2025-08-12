@@ -1,7 +1,9 @@
 use axum::{Router, routing::get};
 
+use rrl_core::Rule;
 use tokio_postgres::NoTls;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -30,14 +32,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::debug!("Connected to Postgres");
 
     let result = client
-        .query_one(
-            "SELECT route FROM rules WHERE route = $1",
-            &[&"api/v1/users"],
-        )
+        .query_one("SELECT * FROM rules WHERE route = $1", &[&"api/v1/users"])
         .await
         .unwrap();
     println!("ROWS: {:?}", result);
-    println!("row data {:?}", result.get::<&usize, String>(&0_usize));
+    // println!("row data {:?}", result.get::<&usize, String>(&0_usize));
+    // let id: Uuid = result.get("id");
+    // println!("id: {}", id);
+    let rule: Rule = result.try_into()?;
+    println!("row data {:?}", rule);
 
     let app = Router::new().route("/", get(async move || "Hello, World!"));
 

@@ -1,7 +1,9 @@
 use tokio_postgres::Row;
+use uuid::Uuid;
 
-use crate::{LimiterTrackingType, rate_limiter::RateLimiterAlgorithms};
+use crate::{LimiterTrackingType, RateLimiterAlgorithms};
 
+#[derive(Debug)]
 pub struct Rule {
     pub id: String,                       // The key to be rate limited
     pub route: String,                    // the endpoint : pattern like route
@@ -24,7 +26,7 @@ impl TryFrom<Row> for Rule {
         let tracking_type: LimiterTrackingType =
             value.get::<_, String>("tracking_type").try_into()?;
         Ok(Rule {
-            id: value.get("id"),
+            id: value.get::<_, Uuid>("id").into(),
             route: value.get("route"),
             algorithm,
             tracking_type,
