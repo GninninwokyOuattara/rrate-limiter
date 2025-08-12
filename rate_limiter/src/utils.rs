@@ -1,19 +1,16 @@
 use anyhow::Context;
 use axum::http::HeaderMap;
 use redis::{AsyncCommands, Commands, RedisError, aio::ConnectionManager};
+use rrl_core::{LimiterTrackingType, RateLimiterAlgorithms, Rule};
 
-use crate::{
-    errors,
-    rate_limiter::RateLimiterAlgorithms,
-    rules::{LimiterTrackingType, Rule},
-};
+use crate::errors;
 
 pub fn make_redis_key(
     key_tracked: &str,
     hashed_route: &str,
     limit_algorithm: &RateLimiterAlgorithms,
 ) -> String {
-    // Ex : fixed_window : hash of the matched route : key being tracked for rate limitation
+    // Ex : fixed_window : id of the matched route : key being tracked for rate limitation
     format!(
         "{}:{}:{}",
         limit_algorithm.to_string(),
@@ -28,7 +25,7 @@ pub fn _populate_redis_kv_rule_algorithm(
 ) -> Result<(), RedisError> {
     for rule in rules {
         conn.set(
-            format!("rules_to_algorithms:{}", rule.hash.clone()),
+            format!("rules_to_algorithms:{}", rule.id.clone()),
             rule.algorithm.to_string(),
         )?
     }
@@ -43,7 +40,7 @@ pub async fn populate_redis_with_rules(
         // set the integers fields
         let _: () = conn
             .hset_multiple(
-                format!("rules:{}", rule.hash),
+                format!("rules:{}", rule.id),
                 &[("limit", rule.limit), ("expiration", rule.expiration)],
             )
             .await
@@ -53,7 +50,7 @@ pub async fn populate_redis_with_rules(
         let tracking_type: String = rule.tracking_type.clone().into();
         let _: () = conn
             .hset_multiple(
-                format!("rules:{}", rule.hash),
+                format!("rules:{}", rule.id),
                 &[
                     ("algorithm", rule.algorithm.to_string()),
                     ("tracking_type", tracking_type),

@@ -744,11 +744,16 @@ dependencies = [
  "axum-macros",
  "matchit",
  "redis",
+ "rrl_core",
  "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
 ]
+
+[[package]]
+name = "rrl_core"
+version = "0.1.0"
 
 [[package]]
 name = "rustc-demangle"

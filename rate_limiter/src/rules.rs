@@ -1,149 +1,152 @@
-use crate::rate_limiter::RateLimiterAlgorithms;
-
-#[derive(Clone)]
-pub enum LimiterTrackingType {
-    IP,     // Should be tracked by the ip address of the requester
-    Custom, // A custom header should be tracked
-}
-
-impl From<String> for LimiterTrackingType {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "custom" => LimiterTrackingType::Custom,
-            _ => LimiterTrackingType::IP, // Ip is the default
-        }
-    }
-}
-
-impl From<LimiterTrackingType> for String {
-    fn from(value: LimiterTrackingType) -> Self {
-        match value {
-            LimiterTrackingType::Custom => "custom".to_string(),
-            LimiterTrackingType::IP => "ip".to_string(),
-        }
-    }
-}
-
-pub struct Rule {
-    pub id: String,                       // The key to be rate limited
-    pub route: String,                    // the endpoint : pattern like route
-    pub hash: String,                     // The hash of the pattern, used as key in cache.
-    pub algorithm: RateLimiterAlgorithms, // The algorithm to use
-    pub limit: u64,                       // The maximum number of requests
-    pub expiration: u64,                  // The time window for the rate limit
-    pub tracking_type: LimiterTrackingType,
-    pub custom_tracking_key: Option<String>,
-}
-
-// TODO: I'll need an implementation from the response of a database.
+use rrl_core::{LimiterTrackingType, RateLimiterAlgorithms, Rule};
 
 pub fn generate_dummy_rules() -> Vec<Rule> {
     vec![
         Rule {
             id: "user1".to_string(),
             route: "/products".to_string(),
-            hash: "445022216b8783f3a2fff1af63def96e".to_string(),
+
             algorithm: RateLimiterAlgorithms::FixedWindow,
             limit: 100,
             expiration: 60,
             tracking_type: LimiterTrackingType::Custom,
             custom_tracking_key: Some("product_key".to_string()),
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
         Rule {
             id: "user2".to_string(),
             route: "/api/v1/orders".to_string(),
-            hash: "2ba810480dabb4007ddb8108a0ef8d55".to_string(),
+
             algorithm: RateLimiterAlgorithms::TokenBucket,
             limit: 50,
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
         Rule {
             id: "user2".to_string(),
             route: "/api/v1/commands".to_string(),
-            hash: "2ba810480dabb4007ddb8108a0ef8d56".to_string(),
+
             algorithm: RateLimiterAlgorithms::SlidingWindowLog,
             limit: 50,
             expiration: 120,
             tracking_type: LimiterTrackingType::Custom,
             custom_tracking_key: Some("x-api-key".to_string()),
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
         Rule {
             id: "user3".to_string(),
             route: "/api/v1/users/{id}".to_string(),
-            hash: "dd0855d5107f37a3d4d817e9d931c7d4".to_string(),
+
             algorithm: RateLimiterAlgorithms::FixedWindow,
             limit: 200,
             expiration: 300,
             tracking_type: LimiterTrackingType::Custom,
             custom_tracking_key: Some("x-api-key".to_string()),
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
         Rule {
             // FIXED WINDOW TEST
             id: "user2".to_string(),
             route: "/api/v1/fw".to_string(),
-            hash: "fixed".to_string(),
+
             algorithm: RateLimiterAlgorithms::FixedWindow,
             limit: 50,
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
         Rule {
             // SLIDING WINDOW LOG TEST
             id: "user2".to_string(),
             route: "/api/v1/swl".to_string(),
-            hash: "log".to_string(),
+
             algorithm: RateLimiterAlgorithms::SlidingWindowLog,
             limit: 50,
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
         Rule {
             // SLIDING WINDOW COUNTER TEST
             id: "user2".to_string(),
             route: "/api/v1/swc".to_string(),
-            hash: "counter".to_string(),
+
             algorithm: RateLimiterAlgorithms::SlidingWindowCounter,
             limit: 50,
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
         Rule {
             // TOKEN BUCKET TEST
             id: "user2".to_string(),
             route: "/api/v1/tb".to_string(),
-            hash: "token".to_string(),
+
             algorithm: RateLimiterAlgorithms::TokenBucket,
             limit: 50,
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
         Rule {
             // LEAKY BUCKET TEST
             id: "user2".to_string(),
             route: "/api/v1/lb".to_string(),
-            hash: "leaky".to_string(),
+
             algorithm: RateLimiterAlgorithms::LeakyBucket,
             limit: 50,
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
         Rule {
             // Direct
             id: "user2".to_string(),
             route: "/api/v1/direct".to_string(),
-            hash: "leaky".to_string(),
+
             algorithm: RateLimiterAlgorithms::FixedWindow,
             limit: 50,
             expiration: 5,
             tracking_type: LimiterTrackingType::Custom,
             custom_tracking_key: Some("foo".to_string()),
+            status: true,
+            ttl: 60,
+            date_creation: 1223244,
+            date_modification: 1344555,
         },
     ]
 }

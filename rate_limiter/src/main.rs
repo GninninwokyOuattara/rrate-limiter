@@ -7,6 +7,7 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use matchit::Router as MatchitRouter;
+use rrl_core::RateLimiterAlgorithms;
 use std::sync::Arc;
 
 use redis::{AsyncCommands, aio::ConnectionManager};
@@ -19,7 +20,7 @@ mod utils;
 
 use crate::{
     errors::LimiterError,
-    rate_limiter::{RateLimiterAlgorithms, execute_rate_limiting},
+    rate_limiter::execute_rate_limiting,
     rules::generate_dummy_rules,
     utils::{get_tracked_key_from_header, populate_redis_with_rules},
 };
@@ -58,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut route_matcher = MatchitRouter::new();
     dummy_rules.into_iter().for_each(|rule| {
         route_matcher
-            .insert(rule.route, rule.hash)
+            .insert(rule.route, rule.id)
             .expect("Failed to insert route");
     });
 
