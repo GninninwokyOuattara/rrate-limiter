@@ -1,3 +1,7 @@
+use std::io::Read;
+
+use tokio_postgres::types::FromSql;
+
 const FIXED_WINDOW: &str = "fw";
 const SLIDING_WINDOW_COUNTER: &str = "swc";
 const SLIDING_WINDOW_LOG: &str = "swl";
@@ -270,6 +274,30 @@ impl TryFrom<String> for RateLimiterAlgorithms {
     }
 }
 
+impl<'a> FromSql<'a> for RateLimiterAlgorithms {
+    fn from_sql(
+        _ty: &tokio_postgres::types::Type,
+        mut raw: &'a [u8],
+    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        let mut buf = Vec::with_capacity(raw.len());
+        raw.read_to_end(&mut buf)?;
+        let value = String::from_utf8(buf)?;
+
+        match value.as_str() {
+            FIXED_WINDOW => Ok(RateLimiterAlgorithms::FixedWindow),
+            SLIDING_WINDOW_COUNTER => Ok(RateLimiterAlgorithms::SlidingWindowCounter),
+            SLIDING_WINDOW_LOG => Ok(RateLimiterAlgorithms::SlidingWindowLog),
+            TOKEN_BUCKET => Ok(RateLimiterAlgorithms::TokenBucket),
+            LEAKY_BUCKET => Ok(RateLimiterAlgorithms::LeakyBucket),
+            _ => Err(format!("{} is not a valid algorithm.", value).into()),
+        }
+    }
+
+    fn accepts(ty: &tokio_postgres::types::Type) -> bool {
+        ty.name() == "algorithm_type"
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum LimiterTrackingType {
     IP,     // Should be tracked by the ip address of the requester
@@ -303,5 +331,26 @@ impl From<LimiterTrackingType> for String {
             LimiterTrackingType::Custom => "custom".to_string(),
             LimiterTrackingType::IP => "ip".to_string(),
         }
+    }
+}
+
+impl<'a> FromSql<'a> for LimiterTrackingType {
+    fn from_sql(
+        _ty: &tokio_postgres::types::Type,
+        mut raw: &'a [u8],
+    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        let mut buf = Vec::with_capacity(raw.len());
+        raw.read_to_end(&mut buf)?;
+        let value = String::from_utf8(buf)?;
+
+        match value.as_str() {
+            "custom" => Ok(LimiterTrackingType::Custom),
+            "ip" => Ok(LimiterTrackingType::IP),
+            _ => Err(format!("{} is not a valid tracking type.", value).into()),
+        }
+    }
+
+    fn accepts(ty: &tokio_postgres::types::Type) -> bool {
+        ty.name() == "tracking_type"
     }
 }
