@@ -15,14 +15,12 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod errors;
 mod rate_limiter;
-mod rules;
 mod utils;
 
 use crate::{
     errors::LimiterError,
     rate_limiter::execute_rate_limiting,
-    rules::generate_dummy_rules,
-    utils::{get_tracked_key_from_header, populate_redis_with_rules},
+    utils::{generate_dummy_rules, get_tracked_key_from_header, populate_redis_with_rules},
 };
 
 struct States {
