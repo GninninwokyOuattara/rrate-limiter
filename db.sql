@@ -13,6 +13,7 @@ CREATE TABLE rules (
     tracking_type tracking_type NOT NULL,
     custom_tracking_key TEXT,
     status BOOL NOT NULL DEFAULT TRUE,
+    ttl INT NOT NULL DEFAULT 60, -- the time to live of the rule itself in the cache
     CONSTRAINT chk_custom_tracking_key CHECK (
         (tracking_type = 'header' AND custom_tracking_key IS NOT NULL) OR
         (tracking_type = 'ip' AND custom_tracking_key IS NULL)
