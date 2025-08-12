@@ -12,6 +12,7 @@ CREATE TABLE rules (
     algorithm algorithm_type NOT NULL,
     tracking_type tracking_type NOT NULL,
     custom_tracking_key TEXT,
+    status BOOL NOT NULL DEFAULT TRUE,
     CONSTRAINT chk_custom_tracking_key CHECK (
         (tracking_type = 'header' AND custom_tracking_key IS NOT NULL) OR
         (tracking_type = 'ip' AND custom_tracking_key IS NULL)
