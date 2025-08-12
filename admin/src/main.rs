@@ -1,3 +1,6 @@
+use axum::{Router, routing::get};
+
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -9,12 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    
-
-    let app = Router::new()
-        .route("/", get(async move || "Hello, World!"));
-        
-        
+    let app = Router::new().route("/", get(async move || "Hello, World!"));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3001").await.unwrap();
     axum::serve(listener, app).await.unwrap();
