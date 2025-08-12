@@ -1,6 +1,9 @@
 use axum::{Router, routing::get};
 
+use tokio_postgres::NoTls;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+mod rules;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -11,6 +14,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    let (client, connection) = tokio_postgres::connect(
+        "host=localhost user=postgres password=postgres dbname=rrate-limiter",
+        NoTls,
+    )
+    .await?;
+
+    // The connection object performs the actual communication with the database,
+    // so spawn it off to run on its own.
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
+
+    tracing::debug!("Connected to Postgres");
+
+    let result = client
+        .query_one(
+            "SELECT route FROM rules WHERE route = $1",
+            &[&"api/v1/users"],
+        )
+        .await
+        .unwrap();
+    println!("ROWS: {:?}", result);
+    println!("row data {:?}", result.get::<&usize, String>(&0_usize));
 
     let app = Router::new().route("/", get(async move || "Hello, World!"));
 
