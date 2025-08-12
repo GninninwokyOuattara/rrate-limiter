@@ -3,7 +3,6 @@ use axum::{Router, routing::get};
 use rrl_core::Rule;
 use tokio_postgres::NoTls;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,6 +40,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // println!("id: {}", id);
     let rule: Rule = result.try_into()?;
     println!("row data {:?}", rule);
+
+    // let algorithm: LimiterTrackingType = result.get("tracking_type");
+
+    // println!("Algorithm :: {:?}", algorithm);
 
     let app = Router::new().route("/", get(async move || "Hello, World!"));
 
