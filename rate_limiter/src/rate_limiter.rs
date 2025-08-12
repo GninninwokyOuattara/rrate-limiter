@@ -3,12 +3,6 @@ use rrl_core::RateLimiterAlgorithms;
 
 use crate::utils::make_redis_key;
 
-const FIXED_WINDOW: &str = "fw";
-const SLIDING_WINDOW_COUNTER: &str = "swc";
-const SLIDING_WINDOW_LOG: &str = "swl";
-const LEAKY_BUCKET: &str = "lb";
-const TOKEN_BUCKET: &str = "tb";
-
 pub struct RateLimiterHeaders {
     limit: u64,     // Maximum number of requests allowed
     remaining: u64, // Number of requests remaining in the current window
