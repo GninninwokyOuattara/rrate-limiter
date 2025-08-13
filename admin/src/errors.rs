@@ -1,5 +1,7 @@
+use std::error::Error;
+
 use axum::{http::StatusCode, response::IntoResponse};
-use rrl_core::tokio_postgres;
+use rrl_core::{tokio_postgres, uuid::Uuid};
 
 use anyhow::anyhow;
 use thiserror::Error;
@@ -7,6 +9,9 @@ use thiserror::Error;
 pub enum ServiceError {
     #[error("Internal Server Error")]
     DatabaseError(#[from] rrl_core::tokio_postgres::Error),
+
+    #[error("No match found for rule {0}")]
+    RuleNotFound(Uuid),
 
     #[error("Internal Server Error")]
     Error(#[from] Box<dyn std::error::Error>),
@@ -21,6 +26,10 @@ impl IntoResponse for ServiceError {
         match &self {
             ServiceError::DatabaseError(_err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+            }
+
+            ServiceError::RuleNotFound(_err) => {
+                (StatusCode::NOT_FOUND, self.to_string()).into_response()
             }
 
             ServiceError::Error(_err) => {

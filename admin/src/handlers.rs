@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::{
     Json,
     extract::{Path, Query, State},
+    http::StatusCode,
     response::IntoResponse,
 };
 use axum_macros::debug_handler;
@@ -48,17 +49,21 @@ pub async fn get_rule_by_id(
     println!("path id : {:#?}", rule_id);
 
     let result = client
-        .query_one(
+        .query(
             r#"
         select * from rules 
-        where id = $1;
+        where id = $1
+        limit 1;
         "#,
             &[&rule_id],
         )
         .await?;
 
-    let rule: Rule = result.try_into()?;
-    println!("rule : {:#?}", rule);
+    if result.is_empty() {
+        return Err(ServiceError::RuleNotFound(rule_id));
+    }
+
+    let rule: Rule = result.get(0).unwrap().to_owned().try_into()?;
     Ok(Json(rule))
 }
 
