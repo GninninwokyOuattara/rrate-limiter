@@ -1,5 +1,6 @@
 use std::io::Read;
 
+use serde::{Deserialize, Serialize};
 use tokio_postgres::types::FromSql;
 
 const FIXED_WINDOW: &str = "fw";
@@ -8,7 +9,7 @@ const SLIDING_WINDOW_LOG: &str = "swl";
 const LEAKY_BUCKET: &str = "lb";
 const TOKEN_BUCKET: &str = "tb";
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum RateLimiterAlgorithms {
     FixedWindow,
     SlidingWindowCounter,
@@ -298,7 +299,7 @@ impl<'a> FromSql<'a> for RateLimiterAlgorithms {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LimiterTrackingType {
     IP,     // Should be tracked by the ip address of the requester
     Header, // A custom header should be tracked

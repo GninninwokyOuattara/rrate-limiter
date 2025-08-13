@@ -1,15 +1,11 @@
-use std::time::SystemTime;
-
 use chrono::Utc;
-use tokio_postgres::{
-    Row,
-    types::{Timestamp, Type},
-};
+use serde::{Deserialize, Serialize};
+use tokio_postgres::Row;
 use uuid::Uuid;
 
 use crate::{LimiterTrackingType, RateLimiterAlgorithms};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Rule {
     pub id: String,                       // The key to be rate limited
     pub route: String,                    // the endpoint : pattern like route
