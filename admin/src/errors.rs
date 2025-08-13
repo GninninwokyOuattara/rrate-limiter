@@ -1,9 +1,6 @@
-use std::error::Error;
-
 use axum::{http::StatusCode, response::IntoResponse};
-use rrl_core::{tokio_postgres, uuid::Uuid};
+use rrl_core::uuid::Uuid;
 
-use anyhow::anyhow;
 use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ServiceError {
