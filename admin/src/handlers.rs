@@ -6,20 +6,15 @@ use axum::{
     response::IntoResponse,
 };
 use axum_macros::debug_handler;
-use rrl_core::{
-    Rule,
-    tokio_postgres::Client,
-    uuid::{self, Uuid},
-};
-use serde::Deserialize;
+use rrl_core::{Rule, tokio_postgres::Client, uuid::Uuid};
 
-use crate::models::Pagination;
+use crate::{errors::ServiceError, models::Pagination};
 
 #[debug_handler]
 pub async fn get_rules(
     pagination: Query<Pagination>,
     State(client): State<Arc<Client>>,
-) -> Result<impl IntoResponse, ()> {
+) -> Result<impl IntoResponse, ServiceError> {
     let result = client
         .query(
             r#"
@@ -35,22 +30,21 @@ pub async fn get_rules(
                 &(pagination.page_size * (pagination.page - 1)),
             ],
         )
-        .await
-        .unwrap();
+        .await?;
     // TODO: Consider cursor based pagination
-    let rules: Vec<Rule> = result
+    let rules = result
         .into_iter()
-        .map(|row| row.try_into().unwrap())
-        .collect();
+        .map(|row| row.try_into())
+        .collect::<Result<Vec<Rule>, Box<dyn std::error::Error>>>()?;
 
-    Ok((axum::http::StatusCode::OK, Json(rules)))
+    Ok(Json(rules))
 }
 
 #[debug_handler]
 pub async fn get_rule_by_id(
     Path(rule_id): Path<Uuid>,
     State(client): State<Arc<Client>>,
-) -> Result<impl IntoResponse, ()> {
+) -> Result<impl IntoResponse, ServiceError> {
     println!("path id : {:#?}", rule_id);
 
     let result = client
@@ -61,10 +55,9 @@ pub async fn get_rule_by_id(
         "#,
             &[&rule_id],
         )
-        .await
-        .unwrap();
+        .await?;
 
-    let rule: Rule = result.try_into().unwrap();
+    let rule: Rule = result.try_into()?;
     println!("rule : {:#?}", rule);
     Ok(Json(rule))
 }

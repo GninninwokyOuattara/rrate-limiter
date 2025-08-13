@@ -13,6 +13,7 @@ use rrl_core::{
 
 use crate::handlers::{delete_rule, get_rule_by_id, get_rules, patch_rule, post_rule};
 
+mod errors;
 mod handlers;
 mod models;
 
