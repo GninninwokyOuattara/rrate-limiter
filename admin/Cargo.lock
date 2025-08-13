@@ -25,6 +25,7 @@ dependencies = [
  "axum",
  "axum-macros",
  "rrl_core",
+ "serde",
  "thiserror",
  "tokio",
 ]
