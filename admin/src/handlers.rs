@@ -2,11 +2,16 @@ use std::sync::Arc;
 
 use axum::{
     Json,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     response::IntoResponse,
 };
 use axum_macros::debug_handler;
-use rrl_core::{Rule, tokio_postgres::Client};
+use rrl_core::{
+    Rule,
+    tokio_postgres::Client,
+    uuid::{self, Uuid},
+};
+use serde::Deserialize;
 
 use crate::models::Pagination;
 
@@ -39,6 +44,29 @@ pub async fn get_rules(
         .collect();
 
     Ok((axum::http::StatusCode::OK, Json(rules)))
+}
+
+#[debug_handler]
+pub async fn get_rule_by_id(
+    Path(rule_id): Path<Uuid>,
+    State(client): State<Arc<Client>>,
+) -> Result<impl IntoResponse, ()> {
+    println!("path id : {:#?}", rule_id);
+
+    let result = client
+        .query_one(
+            r#"
+        select * from rules 
+        where id = $1;
+        "#,
+            &[&rule_id],
+        )
+        .await
+        .unwrap();
+
+    let rule: Rule = result.try_into().unwrap();
+    println!("rule : {:#?}", rule);
+    Ok(Json(rule))
 }
 
 #[debug_handler]

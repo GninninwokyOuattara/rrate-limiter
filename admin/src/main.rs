@@ -11,7 +11,7 @@ use rrl_core::{
     tracing_subscriber::{self, layer::SubscriberExt, util::SubscriberInitExt},
 };
 
-use crate::handlers::{delete_rule, get_rules, patch_rule, post_rule};
+use crate::handlers::{delete_rule, get_rule_by_id, get_rules, patch_rule, post_rule};
 
 mod handlers;
 mod models;
@@ -47,6 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/", get(async move || "Hello, World!"))
         .route("/rules", get(get_rules))
+        .route("/rules/{rule_id}", get(get_rule_by_id))
         .route("/rules", post(post_rule))
         .route("/rules/{rule_id}", patch(patch_rule))
         .route("/rules/{rule_id}", delete(delete_rule))
