@@ -9,7 +9,10 @@ use axum::{
 use axum_macros::debug_handler;
 use rrl_core::{Rule, tokio_postgres::Client, uuid::Uuid};
 
-use crate::{errors::ServiceError, models::Pagination};
+use crate::{
+    errors::ServiceError,
+    models::{Pagination, PostedRule},
+};
 
 #[debug_handler]
 pub async fn get_rules(
@@ -68,7 +71,10 @@ pub async fn get_rule_by_id(
 }
 
 #[debug_handler]
-pub async fn post_rule() -> Result<impl IntoResponse, ()> {
+pub async fn post_rule(
+    State(client): State<Arc<Client>>,
+    Json(rule): Json<PostedRule>,
+) -> Result<impl IntoResponse, ()> {
     Ok(())
 }
 
