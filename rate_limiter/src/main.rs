@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     Router,
     extract::{Request, State},
@@ -7,21 +6,22 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use matchit::Router as MatchitRouter;
-use rrl_core::{LimiterTrackingType, RateLimiterAlgorithms};
+use rrl_core::{LimiterTrackingType, RateLimiterAlgorithms, tracing, tracing_subscriber};
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use redis::{AsyncCommands, aio::ConnectionManager};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-mod errors;
-mod rate_limiter;
-mod utils;
 
 use crate::{
     errors::LimiterError,
     rate_limiter::execute_rate_limiting,
     utils::{generate_dummy_rules, get_tracked_key_from_header, populate_redis_with_rules},
 };
+
+mod errors;
+mod rate_limiter;
+mod utils;
 
 struct States {
     route_matcher: Arc<matchit::Router<String>>,

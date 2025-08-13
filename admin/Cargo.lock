@@ -27,10 +27,6 @@ dependencies = [
  "rrl_core",
  "thiserror",
  "tokio",
- "tokio-postgres",
- "tracing",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]
@@ -856,8 +852,9 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "serde",
- "thiserror",
  "tokio-postgres",
+ "tracing",
+ "tracing-subscriber",
  "uuid",
 ]
 

@@ -1,8 +1,10 @@
 use axum::{Router, routing::get};
-
-use rrl_core::Rule;
-use tokio_postgres::NoTls;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use rrl_core::{
+    Rule,
+    tokio_postgres::{self, NoTls},
+    tracing,
+    tracing_subscriber::{self, layer::SubscriberExt, util::SubscriberInitExt},
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

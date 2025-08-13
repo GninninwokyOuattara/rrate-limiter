@@ -5,13 +5,11 @@ edition = "2024"
 
 
 [dependencies]
-axum = "0.8.4"
+rrl_core ={ path = "../rrl_core"}
 tokio = { version = "1.47.1", features = ["full"] }
-tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-redis = {version = "0.32.5", features = ["connection-manager", "tokio-comp"]}
-matchit = "0.8.4" # Axum require this version
+axum = "0.8.4"
 axum-macros = "0.5.0"
+matchit = "0.8.4" # Axum require this version
 thiserror = "2.0.12"
 anyhow = "1.0.98"
-tracing = "0.1.41"
-rrl_core ={ path = "../rrl_core"}
+redis = {version = "0.32.5", features = ["connection-manager", "tokio-comp"]}
