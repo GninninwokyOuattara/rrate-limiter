@@ -1,7 +1,7 @@
 use anyhow::Context;
 use axum::http::HeaderMap;
 use redis::{AsyncCommands, Commands, RedisError, aio::ConnectionManager};
-use rrl_core::{LimiterTrackingType, RateLimiterAlgorithms, Rule};
+use rrl_core::{LimiterTrackingType, RateLimiterAlgorithms, Rule, chrono};
 
 use crate::errors;
 
@@ -96,7 +96,7 @@ pub fn get_tracked_key_from_header(
 
             return Err(errors::LimiterError::TrackedKeyNotFound("".to_string()));
         }
-        LimiterTrackingType::Custom => {
+        LimiterTrackingType::Header => {
             let custom_key = custom_header_key.context("Custom header should not be null")?;
             if let Some(key) = headers.get(&custom_key) {
                 return Ok(key.to_str().unwrap().to_string());
@@ -116,12 +116,12 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             algorithm: RateLimiterAlgorithms::FixedWindow,
             limit: 100,
             expiration: 60,
-            tracking_type: LimiterTrackingType::Custom,
+            tracking_type: LimiterTrackingType::Header,
             custom_tracking_key: Some("product_key".to_string()),
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
         Rule {
             id: "user2".to_string(),
@@ -134,8 +134,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
         Rule {
             id: "user2".to_string(),
@@ -144,12 +144,12 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             algorithm: RateLimiterAlgorithms::SlidingWindowLog,
             limit: 50,
             expiration: 120,
-            tracking_type: LimiterTrackingType::Custom,
+            tracking_type: LimiterTrackingType::Header,
             custom_tracking_key: Some("x-api-key".to_string()),
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
         Rule {
             id: "user3".to_string(),
@@ -158,12 +158,12 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             algorithm: RateLimiterAlgorithms::FixedWindow,
             limit: 200,
             expiration: 300,
-            tracking_type: LimiterTrackingType::Custom,
+            tracking_type: LimiterTrackingType::Header,
             custom_tracking_key: Some("x-api-key".to_string()),
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
         Rule {
             // FIXED WINDOW TEST
@@ -177,8 +177,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
         Rule {
             // SLIDING WINDOW LOG TEST
@@ -192,8 +192,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
         Rule {
             // SLIDING WINDOW COUNTER TEST
@@ -207,8 +207,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
         Rule {
             // TOKEN BUCKET TEST
@@ -222,8 +222,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
         Rule {
             // LEAKY BUCKET TEST
@@ -237,8 +237,8 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             custom_tracking_key: None,
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
         Rule {
             // Direct
@@ -248,12 +248,12 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
             algorithm: RateLimiterAlgorithms::FixedWindow,
             limit: 50,
             expiration: 5,
-            tracking_type: LimiterTrackingType::Custom,
+            tracking_type: LimiterTrackingType::Header,
             custom_tracking_key: Some("foo".to_string()),
             status: true,
             ttl: 60,
-            date_creation: "1223244".to_string(),
-            date_modification: "1344555".to_string(),
+            date_creation: chrono::Utc::now(),
+            date_modification: chrono::Utc::now(),
         },
     ]
 }

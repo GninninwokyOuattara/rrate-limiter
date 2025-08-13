@@ -30,20 +30,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::debug!("Connected to Postgres");
 
-    let result = client
-        .query_one("SELECT * FROM rules WHERE route = $1", &[&"api/v1/users"])
-        .await
-        .unwrap();
-    println!("ROWS: {:?}", result);
+    // let result = client
+    //     .query_one("SELECT * FROM rules WHERE route = $1", &[&"api/v1/users"])
+    //     .await
+    //     .unwrap();
+    // println!("ROWS: {:?}", result);
     // println!("row data {:?}", result.get::<&usize, String>(&0_usize));
     // let id: Uuid = result.get("id");
     // println!("id: {}", id);
-    let rule: Rule = result.try_into()?;
-    println!("row data {:?}", rule);
+    // let rule: Rule = result.try_into()?;
+    // println!("row data {:?}", rule);
 
     // let algorithm: LimiterTrackingType = result.get("tracking_type");
 
     // println!("Algorithm :: {:?}", algorithm);
+
+    let result = client.query("SELECT * FROM rules", &[]).await?;
+
+    let rules: Vec<Rule> = result
+        .into_iter()
+        .map(|row| row.try_into().unwrap())
+        .collect();
+
+    println!("Rules: {:#?}", rules);
 
     let app = Router::new().route("/", get(async move || "Hello, World!"));
 

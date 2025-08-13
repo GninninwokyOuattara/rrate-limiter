@@ -301,7 +301,7 @@ impl<'a> FromSql<'a> for RateLimiterAlgorithms {
 #[derive(Clone, Debug)]
 pub enum LimiterTrackingType {
     IP,     // Should be tracked by the ip address of the requester
-    Custom, // A custom header should be tracked
+    Header, // A custom header should be tracked
 }
 
 // impl From<String> for LimiterTrackingType {
@@ -318,7 +318,7 @@ impl TryFrom<String> for LimiterTrackingType {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.as_str() {
-            "custom" => Ok(LimiterTrackingType::Custom),
+            "header" => Ok(LimiterTrackingType::Header),
             "ip" => Ok(LimiterTrackingType::IP), // Ip should be the default
             _ => Err(format!("{value} is not a valid tracking type.")),
         }
@@ -328,7 +328,7 @@ impl TryFrom<String> for LimiterTrackingType {
 impl From<LimiterTrackingType> for String {
     fn from(value: LimiterTrackingType) -> Self {
         match value {
-            LimiterTrackingType::Custom => "custom".to_string(),
+            LimiterTrackingType::Header => "custom".to_string(),
             LimiterTrackingType::IP => "ip".to_string(),
         }
     }
@@ -344,7 +344,7 @@ impl<'a> FromSql<'a> for LimiterTrackingType {
         let value = String::from_utf8(buf)?;
 
         match value.as_str() {
-            "custom" => Ok(LimiterTrackingType::Custom),
+            "header" => Ok(LimiterTrackingType::Header),
             "ip" => Ok(LimiterTrackingType::IP),
             _ => Err(format!("{} is not a valid tracking type.", value).into()),
         }
