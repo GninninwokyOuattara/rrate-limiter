@@ -63,7 +63,7 @@ pub async fn get_rule_by_id(
         return Err(ServiceError::RuleNotFound(rule_id));
     }
 
-    let rule: Rule = result.get(0).unwrap().to_owned().try_into()?;
+    let rule: Rule = result.first().unwrap().to_owned().try_into()?;
     Ok(Json(rule))
 }
 
@@ -185,7 +185,7 @@ pub async fn patch_rule(
         params.push(&ttl_field);
         // i += 1;
     }
-    fields.push(format!("date_modification = now()"));
+    fields.push("date_modification = now()".to_string());
 
     let query_string = format!(
         "update rules set {} where id = $1 returning *;",
@@ -194,12 +194,12 @@ pub async fn patch_rule(
 
     let result = client.query(&query_string, &params).await?;
 
-    if result.len() == 0 {
+    if result.is_empty() {
         return Err(ServiceError::RuleNotFound(rule_id));
     }
 
     let rule: Rule = result
-        .get(0)
+        .first()
         .ok_or_else(|| ServiceError::RuleNotFound(rule_id))?
         .to_owned()
         .try_into()?;

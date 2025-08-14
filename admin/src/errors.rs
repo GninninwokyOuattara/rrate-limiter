@@ -21,21 +21,16 @@ impl IntoResponse for ServiceError {
     fn into_response(self) -> axum::response::Response {
         tracing::error!("Error : {:#?}", &self);
         match &self {
-            ServiceError::DatabaseError(err) => {
-                match err.as_db_error() {
-                    Some(postgres_error) => {
-                        return (
-                            StatusCode::BAD_REQUEST,
-                            postgres_error.message().to_string(),
-                        )
-                            .into_response();
-                    }
-                    None => {
-                        return (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
-                            .into_response();
-                    }
-                };
-            }
+            ServiceError::DatabaseError(err) => match err.as_db_error() {
+                Some(postgres_error) => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        postgres_error.message().to_string(),
+                    )
+                        .into_response();
+                }
+                None => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response(),
+            },
 
             ServiceError::RuleNotFound(_err) => {
                 (StatusCode::NOT_FOUND, self.to_string()).into_response()
