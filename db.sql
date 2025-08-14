@@ -4,8 +4,7 @@ CREATE TYPE tracking_type AS ENUM ('ip', 'header');
 CREATE TABLE rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     route TEXT NOT NULL UNIQUE,
-    hash UUID NOT NULL DEFAULT gen_random_uuid(),
-    expiration TIMESTAMP WITH TIME ZONE NOT NULL,
+    expiration INT NOT NULL,
     "limit" INT NOT NULL,
     date_creation TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     date_modification TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
