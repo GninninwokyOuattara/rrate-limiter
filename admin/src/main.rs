@@ -18,6 +18,11 @@ mod models;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let host = std::env::var("RL_POSTGRES_HOST").unwrap_or("localhost".to_string());
+    let port = std::env::var("RL_POSTGRES_PORT").unwrap_or("5432".to_string());
+    let user = std::env::var("RL_POSTGRES_USER").unwrap_or("postgres".to_string());
+    let password = std::env::var("RL_POSTGRES_PASSWORD").unwrap_or("postgres".to_string());
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -27,7 +32,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let (client, connection) = tokio_postgres::connect(
-        "host=localhost user=postgres password=postgres dbname=rrate-limiter",
+        format!("host={host} port={port} user={user} password={password} dbname=rrate-limiter")
+            .as_str(),
         NoTls,
     )
     .await?;

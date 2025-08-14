@@ -30,6 +30,14 @@ struct States {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // let host = std::env::var("RL_POSTGRES_HOST").unwrap_or("localhost".to_string());
+    // let port = std::env::var("RL_POSTGRES_PORT").unwrap_or("5432".to_string());
+    // let database = std::env::var("RL_POSTGRES_DB").unwrap_or("rrate-limiter".to_string());
+    // let user = std::env::var("RL_POSTGRES_USER").unwrap_or("postgres".to_string());
+    // let password = std::env::var("RL_POSTGRES_PASSWORD").unwrap_or("postgres".to_string());
+    let redis_host = std::env::var("RL_REDIS_HOST").unwrap_or("localhost".to_string());
+    let redis_port = std::env::var("RL_REDIS_PORT").unwrap_or("6379".to_string());
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -39,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     tracing::debug!("connecting to redis...");
-    let client = redis::Client::open("redis://127.0.0.1/")?;
+    let client = redis::Client::open(format!("redis://{}:{}", redis_host, redis_port))?;
     let redis_connection = ConnectionManager::new(client).await?;
     tracing::debug!("Managed connection to redis established.");
 
@@ -141,23 +149,19 @@ async fn limiter_handler(
     .await?;
 
     match message.as_str() {
-        "Rate limit exceeded." => {
-            Ok((
-                axum::http::StatusCode::TOO_MANY_REQUESTS,
-                headers.to_headers(),
-                message,
-            ))
-        }
+        "Rate limit exceeded." => Ok((
+            axum::http::StatusCode::TOO_MANY_REQUESTS,
+            headers.to_headers(),
+            message,
+        )),
         "Rate limit not exceeded." => {
             Ok((axum::http::StatusCode::OK, headers.to_headers(), message))
         }
-        _ => {
-            Ok((
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                headers.to_headers(),
-                message,
-            ))
-        }
+        _ => Ok((
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            headers.to_headers(),
+            message,
+        )),
     }
 }
 
