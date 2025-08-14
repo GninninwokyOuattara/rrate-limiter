@@ -22,11 +22,6 @@ impl IntoResponse for ServiceError {
         println!("Error : {:#?}", &self);
         match &self {
             ServiceError::DatabaseError(err) => {
-                // if let Some(err) = _err.as_db_error() {
-                //     return (StatusCode::BAD_REQUEST, err.message()).into_response();
-                // };
-
-                // return (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response();
                 match err.as_db_error() {
                     Some(postgres_error) => {
                         return (
