@@ -303,7 +303,7 @@ impl TryFrom<String> for LimiterTrackingType {
 impl From<LimiterTrackingType> for String {
     fn from(value: LimiterTrackingType) -> Self {
         match value {
-            LimiterTrackingType::Header => "custom".to_string(),
+            LimiterTrackingType::Header => "header".to_string(),
             LimiterTrackingType::IP => "ip".to_string(),
         }
     }
