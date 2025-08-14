@@ -5,7 +5,6 @@ use axum::{
     routing::{delete, get, patch, post},
 };
 use rrl_core::{
-    Rule,
     tokio_postgres::{self, NoTls},
     tracing,
     tracing_subscriber::{self, layer::SubscriberExt, util::SubscriberInitExt},
