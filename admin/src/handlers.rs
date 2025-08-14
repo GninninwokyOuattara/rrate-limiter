@@ -30,8 +30,8 @@ pub async fn get_rules(
             "#,
             &[
                 &format!("^{}", pagination.route.clone().unwrap_or_default()),
-                &pagination.page_size,
-                &(pagination.page_size * (pagination.page - 1)),
+                &(pagination.page_size as i32),
+                &(pagination.page_size as i32 * (pagination.page as i32 - 1)),
             ],
         )
         .await?;

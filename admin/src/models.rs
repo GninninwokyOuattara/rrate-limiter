@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug)]
 pub struct Pagination {
-    pub page: i32,
-    pub page_size: i32,
+    pub page: u32,
+    pub page_size: u32,
     pub route: Option<String>,
 }
 
@@ -13,9 +13,9 @@ pub struct PostedRule {
     pub route: String,
     pub algorithm: RateLimiterAlgorithms,
     pub tracking_type: LimiterTrackingType,
-    pub limit: i32,
-    pub expiration: i32,
+    pub limit: u32,
+    pub expiration: u32,
     pub custom_tracking_key: Option<String>,
     pub status: bool,
-    pub ttl: i32,
+    pub ttl: u32,
 }
