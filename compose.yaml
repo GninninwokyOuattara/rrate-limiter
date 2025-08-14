@@ -11,6 +11,13 @@ services:
     depends_on:
       - redis
       - postgres
+    environment:
+      - RL_POSTGRES_HOST=postgres
+      - RL_POSTGRES_PORT=5432
+      - RL_POSTGRES_USER=postgres
+      - RL_POSTGRES_PASSWORD=postgres
+      - RL_REDIS_HOST=redis
+      - RL_REDIS_PORT=6379
   admin:
     restart: "always"
     image: rrl/admin:latest
@@ -21,6 +28,13 @@ services:
       - 3001:3001
     depends_on:
       - postgres
+    environment:
+      - RL_POSTGRES_HOST=postgres
+      - RL_POSTGRES_PORT=5432
+      - RL_POSTGRES_USER=postgres
+      - RL_POSTGRES_PASSWORD=postgres
+      - RL_REDIS_HOST=redis
+      - RL_REDIS_PORT=6379
     
   redis:
     restart: always
@@ -42,6 +56,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+      - PGUSER=postgres
     healthcheck:
       test: [ "CMD", "pg_isready" ]
       interval: 10s
