@@ -3,7 +3,6 @@ use std::sync::Arc;
 use axum::{
     Json,
     extract::{Path, Query, State},
-    http::StatusCode,
     response::IntoResponse,
 };
 use axum_macros::debug_handler;
@@ -74,7 +73,27 @@ pub async fn get_rule_by_id(
 pub async fn post_rule(
     State(client): State<Arc<Client>>,
     Json(rule): Json<PostedRule>,
-) -> Result<impl IntoResponse, ()> {
+) -> Result<impl IntoResponse, ServiceError> {
+    println!("rule: {:#?}", rule);
+
+    let custom_key = if let Some(key) = rule.custom_tracking_key
+        && !key.is_empty()
+    {
+        Some(key)
+    } else {
+        None
+    };
+
+    let _result = client
+        .query(
+            r#"
+            insert into rules (route, "limit", expiration, algorithm, tracking_type, custom_tracking_key, status, ttl)
+            values ($1, $2, $3, $4, $5, $6, $7, $8 );
+            "#,
+            &[&rule.route, &(rule.limit as i32), &(rule.expiration as i32), &rule.algorithm, &rule.tracking_type, &custom_key, &rule.status, &(rule.ttl as i32)],
+        )
+        .await?;
+
     Ok(())
 }
 
