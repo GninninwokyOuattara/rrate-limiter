@@ -48,8 +48,6 @@ pub async fn get_rule_by_id(
     Path(rule_id): Path<Uuid>,
     State(client): State<Arc<Client>>,
 ) -> Result<impl IntoResponse, ServiceError> {
-    println!("path id : {:#?}", rule_id);
-
     let result = client
         .query(
             r#"
@@ -74,8 +72,6 @@ pub async fn post_rule(
     State(client): State<Arc<Client>>,
     Json(rule): Json<PostedRule>,
 ) -> Result<impl IntoResponse, ServiceError> {
-    println!("rule: {:#?}", rule);
-
     let custom_key = if let Some(key) = rule.custom_tracking_key
         && !key.is_empty()
     {

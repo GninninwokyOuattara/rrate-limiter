@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, response::IntoResponse};
-use rrl_core::uuid::Uuid;
+use rrl_core::{tracing, uuid::Uuid};
 
 use thiserror::Error;
 #[derive(Error, Debug)]
@@ -19,7 +19,7 @@ pub enum ServiceError {
 
 impl IntoResponse for ServiceError {
     fn into_response(self) -> axum::response::Response {
-        println!("Error : {:#?}", &self);
+        tracing::error!("Error : {:#?}", &self);
         match &self {
             ServiceError::DatabaseError(err) => {
                 match err.as_db_error() {

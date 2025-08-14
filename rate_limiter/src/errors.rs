@@ -9,6 +9,7 @@ use axum::{
 };
 
 use redis::RedisError;
+use rrl_core::tracing;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -30,12 +31,9 @@ pub enum LimiterError {
 
 impl IntoResponse for LimiterError {
     fn into_response(self) -> Response<Body> {
-        println!("Error {:?}", &self.to_string());
+        tracing::error!("Error : {:#?}", &self);
         let response = match &self {
-            LimiterError::RedisError(_err) => {
-                println!("Redis Error : {:?}", _err);
-                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
-            }
+            LimiterError::RedisError(_err) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             LimiterError::NoRouteMatch(_err) => (StatusCode::NOT_FOUND, self.to_string()),
             LimiterError::Unknown(_error) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             LimiterError::TrackedKeyNotFound(_) => (StatusCode::BAD_REQUEST, self.to_string()),
