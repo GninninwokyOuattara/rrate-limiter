@@ -94,14 +94,14 @@ pub fn get_tracked_key_from_header(
                 }
             }
 
-            return Err(errors::LimiterError::TrackedKeyNotFound("".to_string()));
+            Err(errors::LimiterError::TrackedKeyNotFound("".to_string()))
         }
         LimiterTrackingType::Header => {
             let custom_key = custom_header_key.context("Custom header should not be null")?;
             if let Some(key) = headers.get(&custom_key) {
-                return Ok(key.to_str().unwrap().to_string());
+                Ok(key.to_str().unwrap().to_string())
             } else {
-                return Err(errors::LimiterError::TrackedKeyNotFound(custom_key));
+                Err(errors::LimiterError::TrackedKeyNotFound(custom_key))
             }
         }
     }

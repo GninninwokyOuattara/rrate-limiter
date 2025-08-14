@@ -87,7 +87,7 @@ async fn limiter_handler(
     let matched_route = states
         .route_matcher
         .clone()
-        .at(&request.uri().path())
+        .at(request.uri().path())
         .map_err(|_err| LimiterError::NoRouteMatch(request.uri().path().to_string()))?
         .value
         .clone();
@@ -120,7 +120,7 @@ async fn limiter_handler(
         tracking_type.try_into().map_err(|err| anyhow!("{err}"))?;
 
     let tracking_key = get_tracked_key_from_header(
-        &request.headers(),
+        request.headers(),
         &tracking_type,
         custom_tracking_key.into(),
     )?;
@@ -142,21 +142,21 @@ async fn limiter_handler(
 
     match message.as_str() {
         "Rate limit exceeded." => {
-            return Ok((
+            Ok((
                 axum::http::StatusCode::TOO_MANY_REQUESTS,
                 headers.to_headers(),
                 message,
-            ));
+            ))
         }
         "Rate limit not exceeded." => {
-            return Ok((axum::http::StatusCode::OK, headers.to_headers(), message));
+            Ok((axum::http::StatusCode::OK, headers.to_headers(), message))
         }
         _ => {
-            return Ok((
+            Ok((
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
                 headers.to_headers(),
                 message,
-            ));
+            ))
         }
     }
 }
