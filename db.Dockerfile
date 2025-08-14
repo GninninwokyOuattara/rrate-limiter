@@ -1,3 +1,4 @@
 FROM postgres:alpine
-COPY ./db.sql /docker-entrypoint-initdb.d/
+COPY ./db_creation.sh /docker-entrypoint-initdb.d/
+COPY ./db.sql /db.sql
 
