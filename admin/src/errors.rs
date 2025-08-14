@@ -21,8 +21,25 @@ impl IntoResponse for ServiceError {
     fn into_response(self) -> axum::response::Response {
         println!("Error : {:#?}", &self);
         match &self {
-            ServiceError::DatabaseError(_err) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+            ServiceError::DatabaseError(err) => {
+                // if let Some(err) = _err.as_db_error() {
+                //     return (StatusCode::BAD_REQUEST, err.message()).into_response();
+                // };
+
+                // return (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response();
+                match err.as_db_error() {
+                    Some(postgres_error) => {
+                        return (
+                            StatusCode::BAD_REQUEST,
+                            postgres_error.message().to_string(),
+                        )
+                            .into_response();
+                    }
+                    None => {
+                        return (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
+                            .into_response();
+                    }
+                };
             }
 
             ServiceError::RuleNotFound(_err) => {
