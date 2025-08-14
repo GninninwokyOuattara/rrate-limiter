@@ -5,6 +5,7 @@ pub use rate_limiter::*;
 pub use rules::*;
 
 pub use chrono;
+pub use postgres_types;
 pub use tokio_postgres;
 pub use tracing;
 pub use tracing_subscriber;

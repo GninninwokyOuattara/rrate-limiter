@@ -1,7 +1,5 @@
-use std::io::Read;
-
+use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
-use tokio_postgres::types::FromSql;
 
 const FIXED_WINDOW: &str = "fw";
 const SLIDING_WINDOW_COUNTER: &str = "swc";
@@ -9,12 +7,18 @@ const SLIDING_WINDOW_LOG: &str = "swl";
 const LEAKY_BUCKET: &str = "lb";
 const TOKEN_BUCKET: &str = "tb";
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSql, FromSql)]
+#[postgres(name = "algorithm_type")]
 pub enum RateLimiterAlgorithms {
+    #[postgres(name = "fw")]
     FixedWindow,
+    #[postgres(name = "swc")]
     SlidingWindowCounter,
+    #[postgres(name = "swl")]
     SlidingWindowLog,
+    #[postgres(name = "tb")]
     TokenBucket,
+    #[postgres(name = "lb")]
     LeakyBucket,
 }
 
@@ -275,44 +279,14 @@ impl TryFrom<String> for RateLimiterAlgorithms {
     }
 }
 
-impl<'a> FromSql<'a> for RateLimiterAlgorithms {
-    fn from_sql(
-        _ty: &tokio_postgres::types::Type,
-        mut raw: &'a [u8],
-    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
-        let mut buf = Vec::with_capacity(raw.len());
-        raw.read_to_end(&mut buf)?;
-        let value = String::from_utf8(buf)?;
-
-        match value.as_str() {
-            FIXED_WINDOW => Ok(RateLimiterAlgorithms::FixedWindow),
-            SLIDING_WINDOW_COUNTER => Ok(RateLimiterAlgorithms::SlidingWindowCounter),
-            SLIDING_WINDOW_LOG => Ok(RateLimiterAlgorithms::SlidingWindowLog),
-            TOKEN_BUCKET => Ok(RateLimiterAlgorithms::TokenBucket),
-            LEAKY_BUCKET => Ok(RateLimiterAlgorithms::LeakyBucket),
-            _ => Err(format!("{} is not a valid algorithm.", value).into()),
-        }
-    }
-
-    fn accepts(ty: &tokio_postgres::types::Type) -> bool {
-        ty.name() == "algorithm_type"
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, FromSql, ToSql)]
+#[postgres(name = "tracking_type")]
 pub enum LimiterTrackingType {
-    IP,     // Should be tracked by the ip address of the requester
+    #[postgres(name = "ip")]
+    IP, // Should be tracked by the ip address of the requester
+    #[postgres(name = "header")]
     Header, // A custom header should be tracked
 }
-
-// impl From<String> for LimiterTrackingType {
-//     fn from(value: String) -> Self {
-//         match value.as_str() {
-//             "custom" => LimiterTrackingType::Custom,
-//             _ => LimiterTrackingType::IP, // Ip is the default
-//         }
-//     }
-// }
 
 impl TryFrom<String> for LimiterTrackingType {
     type Error = String;
@@ -332,26 +306,5 @@ impl From<LimiterTrackingType> for String {
             LimiterTrackingType::Header => "custom".to_string(),
             LimiterTrackingType::IP => "ip".to_string(),
         }
-    }
-}
-
-impl<'a> FromSql<'a> for LimiterTrackingType {
-    fn from_sql(
-        _ty: &tokio_postgres::types::Type,
-        mut raw: &'a [u8],
-    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
-        let mut buf = Vec::with_capacity(raw.len());
-        raw.read_to_end(&mut buf)?;
-        let value = String::from_utf8(buf)?;
-
-        match value.as_str() {
-            "header" => Ok(LimiterTrackingType::Header),
-            "ip" => Ok(LimiterTrackingType::IP),
-            _ => Err(format!("{} is not a valid tracking type.", value).into()),
-        }
-    }
-
-    fn accepts(ty: &tokio_postgres::types::Type) -> bool {
-        ty.name() == "tracking_type"
     }
 }
