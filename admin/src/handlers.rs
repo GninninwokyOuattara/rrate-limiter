@@ -36,6 +36,7 @@ pub async fn get_rules(
         )
         .await?;
     // TODO: Consider cursor based pagination
+    // TODO: Current pagination is not good enough as we can't even know is there is next or previous page.
     let rules = result
         .into_iter()
         .map(|row| row.try_into())
