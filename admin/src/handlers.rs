@@ -9,6 +9,7 @@ use axum_macros::debug_handler;
 use rrl_core::{Rule, postgres_types::ToSql, tokio_postgres::Client, uuid::Uuid};
 
 use crate::{
+    db::route_exists,
     errors::ServiceError,
     models::{Pagination, PatchedRule, PostedRule},
 };
@@ -72,6 +73,9 @@ pub async fn post_rule(
     State(client): State<Arc<Client>>,
     Json(rule): Json<PostedRule>,
 ) -> Result<impl IntoResponse, ServiceError> {
+    //  Verifying that the route does not already exists.
+    route_exists(&rule.route, client.clone()).await?;
+
     let custom_key = if let Some(key) = rule.custom_tracking_key
         && !key.is_empty()
     {

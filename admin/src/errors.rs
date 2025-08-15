@@ -13,6 +13,13 @@ pub enum ServiceError {
     #[error("Internal Server Error")]
     Error(#[from] Box<dyn std::error::Error>),
 
+    #[error("{0} is not a valid route pattern")]
+    InvalidRoutePattern(String), // The provided route is not matchit compatible
+
+    #[error("{0} already exists")]
+    AlreadyExistingRoute(String),
+    // Route may be invalid
+    // route may already exits  those are two different errors.
     #[error(transparent)]
     Others(#[from] anyhow::Error),
 }
@@ -38,6 +45,10 @@ impl IntoResponse for ServiceError {
 
             ServiceError::Error(_err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+            }
+
+            ServiceError::InvalidRoutePattern(_) | ServiceError::AlreadyExistingRoute(_) => {
+                (StatusCode::BAD_REQUEST, self.to_string()).into_response()
             }
 
             ServiceError::Others(_err) => {

@@ -12,6 +12,7 @@ use rrl_core::{
 
 use crate::handlers::{delete_rule, get_rule_by_id, get_rules, patch_rule, post_rule};
 
+mod db;
 mod errors;
 mod handlers;
 mod models;
@@ -63,3 +64,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     axum::serve(listener, app).await.unwrap();
     Ok(())
 }
+
+// TODO: validate that the route are matchit compatible before trying to insert.
+// TODO: Paginated response should include previous and next page index. has option they should  be none is there is nothing afterward
