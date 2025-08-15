@@ -6,7 +6,11 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use matchit::Router as MatchitRouter;
-use rrl_core::{LimiterTrackingType, RateLimiterAlgorithms, tracing, tracing_subscriber};
+use rrl_core::{
+    LimiterTrackingType, RateLimiterAlgorithms,
+    tokio_postgres::{Client, NoTls},
+    tracing, tracing_subscriber,
+};
 use std::sync::Arc;
 
 use anyhow::anyhow;
@@ -26,15 +30,15 @@ mod utils;
 struct States {
     route_matcher: Arc<matchit::Router<String>>,
     pool: ConnectionManager,
+    pg_client: Client,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // let host = std::env::var("RL_POSTGRES_HOST").unwrap_or("localhost".to_string());
-    // let port = std::env::var("RL_POSTGRES_PORT").unwrap_or("5432".to_string());
-    // let database = std::env::var("RL_POSTGRES_DB").unwrap_or("rrate-limiter".to_string());
-    // let user = std::env::var("RL_POSTGRES_USER").unwrap_or("postgres".to_string());
-    // let password = std::env::var("RL_POSTGRES_PASSWORD").unwrap_or("postgres".to_string());
+    let host = std::env::var("RL_POSTGRES_HOST").unwrap_or("localhost".to_string());
+    let port = std::env::var("RL_POSTGRES_PORT").unwrap_or("5432".to_string());
+    let user = std::env::var("RL_POSTGRES_USER").unwrap_or("postgres".to_string());
+    let password = std::env::var("RL_POSTGRES_PASSWORD").unwrap_or("postgres".to_string());
     let redis_host = std::env::var("RL_REDIS_HOST").unwrap_or("localhost".to_string());
     let redis_port = std::env::var("RL_REDIS_PORT").unwrap_or("6379".to_string());
 
@@ -45,6 +49,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    tracing::debug!("connecting to postgres...");
+    let (pg_client, connection) = rrl_core::tokio_postgres::connect(
+        format!("host={host} port={port} user={user} password={password} dbname=rrate-limiter")
+            .as_str(),
+        NoTls,
+    )
+    .await?;
+
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            tracing::error!("connection error: {}", e);
+        }
+    });
 
     tracing::debug!("connecting to redis...");
     let client = redis::Client::open(format!("redis://{}:{}", redis_host, redis_port))?;
@@ -72,6 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let states = Arc::new(States {
         route_matcher: Arc::new(route_matcher),
         pool: redis_connection,
+        pg_client,
     });
 
     tracing::debug!("Starting server on port 3000");
