@@ -76,6 +76,12 @@ pub async fn post_rule(
     //  Verifying that the route does not already exists.
     route_exists(&rule.route, client.clone()).await?;
 
+    // Ensuring the provided route is matchit compatible.
+    matchit::Router::new()
+        .insert(rule.route.clone(), false)
+        .map_err(|_err| ServiceError::InvalidRoutePattern(rule.route.clone()))?;
+
+    // not accepting empty keys, should have made this a constraint in the database.
     let custom_key = if let Some(key) = rule.custom_tracking_key
         && !key.is_empty()
     {
