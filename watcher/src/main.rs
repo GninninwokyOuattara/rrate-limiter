@@ -48,6 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::debug!("connecting to redis...");
     let client = redis::Client::open(format!("redis://{}:{}", redis_host, redis_port))?;
     let mut redis_client = ConnectionManager::new(client).await?;
+
     tracing::debug!("Managed connection to redis established.");
 
     let mut interval = time::interval(Duration::from_secs(60));
@@ -93,7 +94,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn make_redis_script(rules: Vec<Rule>) -> Script {
     let mut script_rules: Vec<String> = vec![];
-    let mut script_rules_pub: Vec<String> = vec![];
     rules.into_iter().for_each(|rule| {
 
         let id = rule.id;
@@ -109,18 +109,9 @@ fn make_redis_script(rules: Vec<Rule>) -> Script {
             redis.call('HSET', 'rules:{id}', 'algorithm', '{algorithm}', 'limit', {limit}, 'expiration', {expiration}, 'tracking_type', '{tracking_type}', 'custom_tracking_key', '{custom_tracking_key}', 'status', '{status}')
             ");
         script_rules.push(script);
-
-        let script_update_pub = format!(r"
-            redis.call('HSET', 'rules_pub:{id}', 'algorithm', '{algorithm}', 'limit', {limit}, 'expiration', {expiration}, 'tracking_type', '{tracking_type}', 'custom_tracking_key', '{custom_tracking_key}', 'status', '{status}') 
-            redis.call('EXPIRE', 'rules_pub:{id}', 60)
-            ");
-        script_rules_pub.push(script_update_pub);
-
-
-        
     });
-
+    
+    let publish = format!("redis.call('PUBLISH', 'rl_update', 'update')");
     let script_rules = script_rules.join("\n");
-    let script_rules_pub = script_rules_pub.join("\n");
-    Script::new(&format!("{}\n{}", script_rules, script_rules_pub))
+    Script::new(&format!("{}\n{}", script_rules, publish))
 }
