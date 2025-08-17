@@ -1,3 +1,4 @@
+pub mod db;
 mod rate_limiter;
 mod rules;
 
