@@ -15,7 +15,6 @@ pub struct Rule {
     pub tracking_type: LimiterTrackingType,
     pub custom_tracking_key: Option<String>,
     pub status: bool,
-    pub ttl: i32,
     pub date_creation: chrono::DateTime<Utc>,
     pub date_modification: chrono::DateTime<Utc>,
 }
@@ -35,7 +34,6 @@ impl TryFrom<Row> for Rule {
             expiration: value.get("expiration"),
             custom_tracking_key: value.get("custom_tracking_key"),
             status: value.get("status"),
-            ttl: value.get("ttl"),
             date_creation: value.get("date_creation"),
             date_modification: value.get("date_modification"),
         })
