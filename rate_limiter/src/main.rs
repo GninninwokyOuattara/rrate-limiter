@@ -65,9 +65,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     tracing::debug!("connecting to redis...");
-    let client = redis::Client::open(format!("redis://{}:{}", redis_host, redis_port))?;
-    let redis_connection = ConnectionManager::new(client).await?;
+    let client = redis::Client::open(format!(
+        "redis://{}:{}?protocol=resp3",
+        redis_host, redis_port
+    ))?;
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let config = redis::aio::ConnectionManagerConfig::new()
+        .set_push_sender(tx)
+        .set_automatic_resubscription();
+    let mut redis_connection = client.get_connection_manager_with_config(config).await?;
+    redis_connection.subscribe("rl_update").await.unwrap(); // We actually want to fails if it is impossible to subscribe initially.
     tracing::debug!("Managed connection to redis established.");
+    tracing::debug!("Subscribed to rl_update channel.");
+
+    tokio::spawn(async move {
+        while let Some(msg) = rx.recv().await {
+            tracing::debug!("Received message from redis: {msg:?}");
+        }
+    });
 
     tracing::debug!("generating dummy rules...");
     let dummy_rules = generate_dummy_rules();
