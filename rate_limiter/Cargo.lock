@@ -995,6 +995,7 @@ dependencies = [
  "axum",
  "axum-macros",
  "matchit",
+ "parking_lot",
  "redis",
  "rrl_core",
  "thiserror",
