@@ -76,10 +76,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let generated_script = make_redis_script(rules);
             tracing::info!("Script :: {:#?}", generated_script);
             
-            let _: () = generated_script
+            let result : Result<(), redis::RedisError> = generated_script
                 .invoke_async(&mut redis_client)
-                .await
-                .unwrap();
+                .await;
+
+            if result.is_err() {
+                tracing::error!("An error occured :: {}", result.unwrap_err());
+                continue;
+            }
+                
 
             cursor = maybe_cursor;
             tracing::info!("Updating cursor to: {}", cursor);
