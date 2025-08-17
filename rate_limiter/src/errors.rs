@@ -34,7 +34,7 @@ impl IntoResponse for LimiterError {
         tracing::error!("Error : {:#?}", &self);
         let response = match &self {
             LimiterError::RedisError(_err) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-            LimiterError::NoRouteMatch(_err) => (StatusCode::NOT_FOUND, self.to_string()),
+            LimiterError::NoRouteMatch(_err) => (StatusCode::OK, self.to_string()),
             LimiterError::Unknown(_error) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             LimiterError::TrackedKeyNotFound(_) => (StatusCode::BAD_REQUEST, self.to_string()),
         };
