@@ -7,7 +7,7 @@ const SLIDING_WINDOW_LOG: &str = "swl";
 const LEAKY_BUCKET: &str = "lb";
 const TOKEN_BUCKET: &str = "tb";
 
-#[derive(Debug, Serialize, Deserialize, ToSql, FromSql)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSql, FromSql)]
 #[postgres(name = "algorithm_type")]
 pub enum RateLimiterAlgorithms {
     #[postgres(name = "fw")]

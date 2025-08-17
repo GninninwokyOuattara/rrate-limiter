@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::{LimiterTrackingType, RateLimiterAlgorithms};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Rule {
     pub id: String,                       // The key to be rate limited
     pub route: String,                    // the endpoint : pattern like route
