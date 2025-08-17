@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use redis::aio::ConnectionManager;
+use redis::{Script, aio::ConnectionManager};
 use rrl_core::{
-    chrono,
+    Rule, chrono,
     db::{get_all_rules_updated_at_and_after_date, get_last_update_time},
     tokio_postgres::NoTls,
     tracing, tracing_subscriber,
 };
-use tokio::time::{self, Duration, sleep};
+use tokio::time::{self, Duration};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::debug!("connecting to redis...");
     let client = redis::Client::open(format!("redis://{}:{}", redis_host, redis_port))?;
-    let redis_client = ConnectionManager::new(client).await?;
+    let mut redis_client = ConnectionManager::new(client).await?;
     tracing::debug!("Managed connection to redis established.");
 
     let mut interval = time::interval(Duration::from_secs(60));
@@ -67,11 +67,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let rules = maybe_rules.unwrap();
         if rules.len() > 0 {
-            tracing::debug!("Found {} rules to update", rules.len());
+            tracing::info!("Found {} rules to update", rules.len());
             tracing::debug!("Rules :: {:#?}", rules);
+            
 
-            cursor = rules.last().unwrap().date_modification + chrono::Duration::microseconds(1);
-            tracing::debug!("Updating cursor to: {}", cursor);
+            let maybe_cursor = rules.last().clone().unwrap().date_modification + chrono::Duration::microseconds(1);
+            let generated_script = make_redis_script(rules);
+            tracing::info!("Script :: {:#?}", generated_script);
+            
+            let _: () = generated_script
+                .invoke_async(&mut redis_client)
+                .await
+                .unwrap();
+
+            cursor = maybe_cursor;
+            tracing::info!("Updating cursor to: {}", cursor);
         } else {
             tracing::debug!("No new rules found.");
         }
@@ -79,5 +89,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::debug!("Sleeping for 60 seconds...");
     }
 
-    Ok(())
+}
+
+fn make_redis_script(rules: Vec<Rule>) -> Script {
+    let mut script_rules: Vec<String> = vec![];
+    let mut script_rules_pub: Vec<String> = vec![];
+    rules.into_iter().for_each(|rule| {
+
+        let id = rule.id;
+        let algorithm = rule.algorithm.to_string();
+        let limit = rule.limit;
+        let expiration = rule.expiration;
+        let tracking_type = rule.tracking_type.to_string();
+        let custom_tracking_key = rule.custom_tracking_key.unwrap_or("".to_string());
+        let status = rule.status;
+    
+
+        let script = format!(r"
+            redis.call('HSET', 'rules:{id}', 'algorithm', '{algorithm}', 'limit', {limit}, 'expiration', {expiration}, 'tracking_type', '{tracking_type}', 'custom_tracking_key', '{custom_tracking_key}', 'status', '{status}')
+            ");
+        script_rules.push(script);
+
+        let script_update_pub = format!(r"
+            redis.call('HSET', 'rules_pub:{id}', 'algorithm', '{algorithm}', 'limit', {limit}, 'expiration', {expiration}, 'tracking_type', '{tracking_type}', 'custom_tracking_key', '{custom_tracking_key}', 'status', '{status}') 
+            redis.call('EXPIRE', 'rules_pub:{id}', 60)
+            ");
+        script_rules_pub.push(script_update_pub);
+
+
+        
+    });
+
+    let script_rules = script_rules.join("\n");
+    let script_rules_pub = script_rules_pub.join("\n");
+    Script::new(&format!("{}\n{}", script_rules, script_rules_pub))
 }
