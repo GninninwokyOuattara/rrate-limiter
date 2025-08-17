@@ -288,6 +288,15 @@ pub enum LimiterTrackingType {
     Header, // A custom header should be tracked
 }
 
+impl LimiterTrackingType {
+    pub fn to_string(&self) -> String {
+        match self {
+            LimiterTrackingType::IP => "ip".to_string(),
+            LimiterTrackingType::Header => "header".to_string(),
+        }
+    }
+}
+
 impl TryFrom<String> for LimiterTrackingType {
     type Error = String;
 
