@@ -67,12 +67,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         let rules = maybe_rules.unwrap();
-        if rules.len() > 0 {
+        if !rules.is_empty() {
             tracing::info!("Found {} rules to update", rules.len());
             tracing::debug!("Rules :: {:#?}", rules);
             
 
-            let maybe_cursor = rules.last().clone().unwrap().date_modification + chrono::Duration::microseconds(1);
+            let maybe_cursor = rules.last().unwrap().date_modification + chrono::Duration::microseconds(1);
             let generated_script = make_redis_script(rules);
             tracing::info!("Script :: {:#?}", generated_script);
             
@@ -116,7 +116,7 @@ fn make_redis_script(rules: Vec<Rule>) -> Script {
         script_rules.push(script);
     });
     
-    let publish = format!("redis.call('PUBLISH', 'rl_update', 'update')");
+    let publish = "redis.call('PUBLISH', 'rl_update', 'update')".to_string();
     let script_rules = script_rules.join("\n");
     Script::new(&format!("{}\n{}", script_rules, publish))
 }
