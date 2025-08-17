@@ -57,20 +57,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_default();
 
     loop {
+        interval.tick().await;
         tracing::debug!("Checking for new at or after updates {:?}...", cursor);
-        let rules = get_all_rules_updated_at_and_after_date(pg_client.clone(), cursor).await;
-        if let Ok(rules) = rules
-            && rules.len() > 0
-        {
+        let maybe_rules = get_all_rules_updated_at_and_after_date(pg_client.clone(), cursor).await;
+        if maybe_rules.is_err() {
+            tracing::error!("An error occured :: {}", maybe_rules.unwrap_err());
+            continue;
+        }
+
+        let rules = maybe_rules.unwrap();
+        if rules.len() > 0 {
             tracing::debug!("Found {} rules to update", rules.len());
             tracing::debug!("Rules :: {:#?}", rules);
 
             cursor = rules.last().unwrap().date_modification + chrono::Duration::microseconds(1);
             tracing::debug!("Updating cursor to: {}", cursor);
-            // populate_redis_with_rules(redis_client.clone(), rules).await;
+        } else {
+            tracing::debug!("No new rules found.");
         }
+
         tracing::debug!("Sleeping for 60 seconds...");
-        interval.tick().await;
     }
 
     Ok(())
