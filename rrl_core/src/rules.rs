@@ -1,5 +1,5 @@
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 use tokio_postgres::Row;
 use uuid::Uuid;
 
@@ -37,5 +37,30 @@ impl TryFrom<Row> for Rule {
             date_creation: value.get("date_creation"),
             date_modification: value.get("date_modification"),
         })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MinimalRule {
+    pub route: String,                    // the endpoint : pattern like route
+    pub algorithm: RateLimiterAlgorithms, // The algorithm to use
+    pub limit: i32,                       // The maximum number of requests
+    pub expiration: i32,                  // The time window for the rate limit
+    pub tracking_type: LimiterTrackingType,
+    pub custom_tracking_key: Option<String>,
+    #[serde(deserialize_with = "deserialize_bool")]
+    pub status: bool,
+}
+
+fn deserialize_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let s: &str = de::Deserialize::deserialize(deserializer)?;
+
+    match s {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err(de::Error::unknown_variant(s, &["true", "false"])),
     }
 }

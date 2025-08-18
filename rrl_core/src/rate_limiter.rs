@@ -11,14 +11,19 @@ const TOKEN_BUCKET: &str = "tb";
 #[postgres(name = "algorithm_type")]
 pub enum RateLimiterAlgorithms {
     #[postgres(name = "fw")]
+    #[serde(alias = "fw")]
     FixedWindow,
     #[postgres(name = "swc")]
+    #[serde(alias = "swc")]
     SlidingWindowCounter,
     #[postgres(name = "swl")]
+    #[serde(alias = "swl")]
     SlidingWindowLog,
     #[postgres(name = "tb")]
+    #[serde(alias = "tb")]
     TokenBucket,
     #[postgres(name = "lb")]
+    #[serde(alias = "lb")]
     LeakyBucket,
 }
 
@@ -283,8 +288,10 @@ impl TryFrom<String> for RateLimiterAlgorithms {
 #[postgres(name = "tracking_type")]
 pub enum LimiterTrackingType {
     #[postgres(name = "ip")]
+    #[serde(alias = "ip")]
     IP, // Should be tracked by the ip address of the requester
     #[postgres(name = "header")]
+    #[serde(alias = "header")]
     Header, // A custom header should be tracked
 }
 
