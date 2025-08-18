@@ -12,7 +12,7 @@ use rrl_core::{
     tokio_postgres::{Client, NoTls},
     tracing, tracing_subscriber,
 };
-use std::sync::Arc;
+use std::{mem, sync::Arc};
 
 use anyhow::anyhow;
 use redis::{AsyncCommands, aio::ConnectionManager};
@@ -23,7 +23,7 @@ use crate::{
     rate_limiter::execute_rate_limiting,
     utils::{
         generate_dummy_rules, get_rules_from_redis, get_tracked_key_from_header,
-        populate_redis_with_rules,
+        instantiate_matcher_with_rules, populate_redis_with_rules,
     },
 };
 
@@ -78,37 +78,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set_push_sender(tx)
         .set_automatic_resubscription();
     let mut redis_connection = client.get_connection_manager_with_config(config).await?;
+    let mut con_for_task = redis_connection.clone();
     tracing::debug!("Managed connection to redis established.");
     redis_connection.subscribe("rl_update").await.unwrap(); // We actually want to fails if it is impossible to subscribe initially.
     tracing::debug!("Subscribed to rl_update channel.");
 
-    let route_matcher = Arc::new(RwLock::new(MatchitRouter::new())); // Initial instance of the matcher.
-
+    let rules_config = get_rules_from_redis(&mut redis_connection).await.unwrap();
+    let route_matcher = Arc::new(RwLock::new(instantiate_matcher_with_rules(rules_config))); // Initial instance of the matcher.
+    let route_matcher_for_task = Arc::clone(&route_matcher);
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
             tracing::debug!("Received message from redis: {msg:?}");
+            let new_rules = get_rules_from_redis(&mut con_for_task).await.unwrap();
+            let new_router = instantiate_matcher_with_rules(new_rules);
+            *route_matcher_for_task.write() = new_router;
+            tracing::debug!("Updated route matcher.");
         }
     });
-
-    get_rules_from_redis(&mut redis_connection).await.unwrap();
-
-    tracing::debug!("generating dummy rules...");
-    let dummy_rules = generate_dummy_rules();
-
-    // populate_redis_kv_rule_algorithm(&mut redis_connection, &dummy_rules)?;
-    tracing::debug!("populating redis with generatedrules...");
-    populate_redis_with_rules(redis_connection.clone(), &dummy_rules)
-        .await
-        .unwrap();
-
-    // Here we are just building the route matcher.
-    tracing::debug!("building sample route matcher...");
-
-    // dummy_rules.into_iter().for_each(|rule| {
-    //     route_matcher
-    //         .insert(rule.route, rule.id)
-    //         .expect("Failed to insert route");
-    // });
 
     let states = Arc::new(States {
         route_matcher: route_matcher.clone(),
@@ -142,8 +128,6 @@ async fn limiter_handler(
         .map_err(|_err| LimiterError::NoRouteMatch(request.uri().path().to_string()))?
         .value
         .clone();
-
-    // TODO : A preamptive check to see if the rate limit is already reached. Will allow for early return.
 
     // We retrieve the algorithm, expiration and limit from redis
     let (rl_algo, expiration, limit, custom_tracking_key, tracking_type): (

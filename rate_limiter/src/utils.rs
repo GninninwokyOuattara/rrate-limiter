@@ -1,7 +1,11 @@
 use anyhow::Context;
 use axum::http::HeaderMap;
+use matchit::Router;
+use matchit::Router as MatchitRouter;
+use redis::JsonAsyncCommands;
 use redis::{AsyncCommands, Commands, RedisError, aio::ConnectionManager};
-use rrl_core::{LimiterTrackingType, RateLimiterAlgorithms, Rule, chrono};
+use rrl_core::{LimiterTrackingType, MinimalRule, RateLimiterAlgorithms, Rule, chrono, tracing};
+use std::collections::HashMap;
 
 use crate::errors;
 
@@ -248,10 +252,36 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
     ]
 }
 
-pub async fn get_rules_from_redis(connection: &mut ConnectionManager) -> Result<(), RedisError> {
+pub async fn get_rules_from_redis(
+    connection: &mut ConnectionManager,
+) -> Result<HashMap<String, MinimalRule>, RedisError> {
     // Get all fields and values from redis.
-    let res: Vec<String> = connection.hgetall("rules").await?;
+    let res: String = connection.json_get("rules", "$").await?;
+    let rules: Vec<HashMap<String, MinimalRule>> = serde_json::from_str(&res)?;
+    tracing::info!("length of rules retrieved: {}", rules.len());
+    if rules.is_empty() {
+        return Ok(HashMap::new());
+    }
 
-    println!("res: {:#?}", res);
-    Ok(())
+    let hash = rules.first().unwrap();
+    Ok(hash.clone())
+}
+
+pub fn instantiate_matcher_with_rules(rules: HashMap<String, MinimalRule>) -> Router<String> {
+    let mut matcher = MatchitRouter::new();
+    for (rule_id, rule) in rules {
+        match matcher.insert(rule.route.clone(), rule_id.clone()) {
+            Ok(_) => {
+                tracing::debug!(
+                    "Successfully inserted route: {} with id: {}",
+                    rule.route,
+                    rule_id
+                );
+            }
+            Err(e) => {
+                tracing::warn!("Failed to insert route: {e}. Errors are ignored.");
+            }
+        }
+    }
+    matcher
 }
