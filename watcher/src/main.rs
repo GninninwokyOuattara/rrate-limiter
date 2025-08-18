@@ -106,6 +106,7 @@ fn make_redis_script(rules: Vec<Rule>) -> Script {
 
     rules.into_iter().for_each(|rule| {
         let id = rule.id;
+        let route = format!("{}{}{}", r#""route":""#, rule.route, r#"""#);
         let algorithm = format!(
             "{}{}{}",
             r#""algorithm":""#,
@@ -132,7 +133,7 @@ fn make_redis_script(rules: Vec<Rule>) -> Script {
 
         let script = format!(
             r"
-            redis.call('JSON.SET', 'rules', {key} , {} {algorithm}, {limit}, {expiration}, {tracking_type}, {custom_tracking_key}, {status} {})
+            redis.call('JSON.SET', 'rules', {key} , {} {route}, {algorithm}, {limit}, {expiration}, {tracking_type}, {custom_tracking_key}, {status} {})
             ", r#"'{"#, r#"}'"#
         );
 
