@@ -247,3 +247,11 @@ pub fn generate_dummy_rules() -> Vec<Rule> {
         },
     ]
 }
+
+pub async fn get_rules_from_redis(connection: &mut ConnectionManager) -> Result<(), RedisError> {
+    // Get all fields and values from redis.
+    let res: Vec<String> = connection.hgetall("rules").await?;
+
+    println!("res: {:#?}", res);
+    Ok(())
+}

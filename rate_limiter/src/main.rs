@@ -6,6 +6,7 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use matchit::Router as MatchitRouter;
+use parking_lot::RwLock;
 use rrl_core::{
     LimiterTrackingType, RateLimiterAlgorithms,
     tokio_postgres::{Client, NoTls},
@@ -20,7 +21,10 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use crate::{
     errors::LimiterError,
     rate_limiter::execute_rate_limiting,
-    utils::{generate_dummy_rules, get_tracked_key_from_header, populate_redis_with_rules},
+    utils::{
+        generate_dummy_rules, get_rules_from_redis, get_tracked_key_from_header,
+        populate_redis_with_rules,
+    },
 };
 
 mod errors;
@@ -28,7 +32,7 @@ mod rate_limiter;
 mod utils;
 
 struct States {
-    route_matcher: Arc<matchit::Router<String>>,
+    route_matcher: Arc<RwLock<matchit::Router<String>>>,
     pool: ConnectionManager,
     pg_client: Client,
 }
@@ -74,15 +78,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set_push_sender(tx)
         .set_automatic_resubscription();
     let mut redis_connection = client.get_connection_manager_with_config(config).await?;
-    redis_connection.subscribe("rl_update").await.unwrap(); // We actually want to fails if it is impossible to subscribe initially.
     tracing::debug!("Managed connection to redis established.");
+    redis_connection.subscribe("rl_update").await.unwrap(); // We actually want to fails if it is impossible to subscribe initially.
     tracing::debug!("Subscribed to rl_update channel.");
+
+    let route_matcher = Arc::new(RwLock::new(MatchitRouter::new())); // Initial instance of the matcher.
 
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
             tracing::debug!("Received message from redis: {msg:?}");
         }
     });
+
+    get_rules_from_redis(&mut redis_connection).await.unwrap();
 
     tracing::debug!("generating dummy rules...");
     let dummy_rules = generate_dummy_rules();
@@ -95,15 +103,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Here we are just building the route matcher.
     tracing::debug!("building sample route matcher...");
-    let mut route_matcher = MatchitRouter::new();
-    dummy_rules.into_iter().for_each(|rule| {
-        route_matcher
-            .insert(rule.route, rule.id)
-            .expect("Failed to insert route");
-    });
+
+    // dummy_rules.into_iter().for_each(|rule| {
+    //     route_matcher
+    //         .insert(rule.route, rule.id)
+    //         .expect("Failed to insert route");
+    // });
 
     let states = Arc::new(States {
-        route_matcher: Arc::new(route_matcher),
+        route_matcher: route_matcher.clone(),
         pool: redis_connection,
         pg_client,
     });
@@ -129,6 +137,7 @@ async fn limiter_handler(
     let matched_route = states
         .route_matcher
         .clone()
+        .read()
         .at(request.uri().path())
         .map_err(|_err| LimiterError::NoRouteMatch(request.uri().path().to_string()))?
         .value
