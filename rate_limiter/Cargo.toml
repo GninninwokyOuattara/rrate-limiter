@@ -12,5 +12,6 @@ axum-macros = "0.5.0"
 matchit = "0.8.4" # Axum require this version
 thiserror = "2.0.12"
 anyhow = "1.0.98"
-redis = {version = "0.32.5", features = ["connection-manager", "tokio-comp"]}
+redis = {version = "0.32.5", features = ["connection-manager", "tokio-comp", "json"]}
 parking_lot = "0.12.4"
+serde_json = "1.0.142"

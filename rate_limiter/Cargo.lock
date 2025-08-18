@@ -998,6 +998,7 @@ dependencies = [
  "parking_lot",
  "redis",
  "rrl_core",
+ "serde_json",
  "thiserror",
  "tokio",
 ]
@@ -1020,6 +1021,8 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "ryu",
+ "serde",
+ "serde_json",
  "sha1_smol",
  "socket2 0.6.0",
  "tokio",
