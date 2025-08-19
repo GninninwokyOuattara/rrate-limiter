@@ -72,8 +72,12 @@ pub async fn get_rule_by_id(
 #[debug_handler]
 pub async fn post_rule(
     State(client): State<Arc<Client>>,
-    Json(rule): Json<PostedRule>,
+    Json(mut rule): Json<PostedRule>,
 ) -> Result<impl IntoResponse, ServiceError> {
+    // Normalisation of the route, if it does not start with / we are appending it.
+    if !rule.route.starts_with('/') {
+        rule.route = format!("/{}", rule.route);
+    }
     //  Verifying that the route does not already exists.
     route_exists(&rule.route, client.clone()).await?;
 
