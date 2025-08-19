@@ -16,6 +16,8 @@ CREATE TABLE rules (
         (tracking_type = 'header' AND custom_tracking_key IS NOT NULL) OR
         (tracking_type = 'ip' AND custom_tracking_key IS NULL)
     )
+    -- Constraint route should always start with /
+    CONSTRAINT chk_route_starts_with_slash CHECK (route ~ '^/')
 );
 
 CREATE INDEX idx_rules_route ON rules(route);
