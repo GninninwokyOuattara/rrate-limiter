@@ -151,5 +151,3 @@ async fn limiter_handler(
         )),
     }
 }
-
-// TODO: It is wrong to return 404 when a url is not found in the matcher. a 200 should be returned. 404 is meant to indicate that the resources was not found.
