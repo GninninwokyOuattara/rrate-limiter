@@ -7,20 +7,21 @@ use axum::{
 use axum_macros::debug_handler;
 use parking_lot::RwLock;
 use rrl_core::{
-    LimiterTrackingType, RateLimiterAlgorithms,
     tokio_postgres::{Client, NoTls},
     tracing, tracing_subscriber,
 };
 use std::sync::Arc;
 
-use anyhow::anyhow;
-use redis::{AsyncCommands, aio::ConnectionManager};
+use redis::aio::ConnectionManager;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
     errors::LimiterError,
     rate_limiter::execute_rate_limiting,
-    utils::{get_rules_from_redis, get_tracked_key_from_header, instantiate_matcher_with_rules},
+    utils::{
+        get_rules_from_redis, get_rules_information_by_redis_json_key, get_tracked_key_from_header,
+        instantiate_matcher_with_rules,
+    },
 };
 
 mod errors;
@@ -116,7 +117,7 @@ async fn limiter_handler(
     request: Request,
 ) -> anyhow::Result<impl IntoResponse, LimiterError> {
     // Finding which pattern match the uri using the matcher
-    let matched_route = states
+    let associated_key = states
         .route_matcher
         .clone()
         .read()
@@ -126,48 +127,24 @@ async fn limiter_handler(
         .clone();
 
     // We retrieve the algorithm, expiration and limit from redis
-    let (rl_algo, expiration, limit, custom_tracking_key, tracking_type): (
-        String,
-        u64,
-        u64,
-        String,
-        String,
-    ) = states
-        .pool
-        .clone()
-        .hmget(
-            format!("rules:{}", matched_route),
-            &[
-                "algorithm",
-                "expiration",
-                "limit",
-                "custom_tracking_key",
-                "tracking_type",
-            ],
-        )
-        .await?;
-
-    let tracking_type: LimiterTrackingType =
-        tracking_type.try_into().map_err(|err| anyhow!("{err}"))?;
+    let limiter_rule =
+        get_rules_information_by_redis_json_key(&mut states.pool.clone(), &associated_key)
+            .await
+            .unwrap();
 
     let tracking_key = get_tracked_key_from_header(
         request.headers(),
-        &tracking_type,
-        custom_tracking_key.into(),
+        &limiter_rule.tracking_type,
+        limiter_rule.custom_tracking_key,
     )?;
-
-    // Where the rate limiting happens.
-    let Ok(rate_limiting_algorithm) = RateLimiterAlgorithms::from_string(&rl_algo) else {
-        return Err(anyhow!("Could not convert cache key to local algorithm").into());
-    };
 
     let (message, headers) = execute_rate_limiting(
         states.pool.clone(),
         &tracking_key,
-        &matched_route,
-        rate_limiting_algorithm,
-        limit,
-        expiration,
+        &associated_key,
+        limiter_rule.algorithm,
+        limiter_rule.limit as u64,
+        limiter_rule.expiration as u64,
     )
     .await?;
 
