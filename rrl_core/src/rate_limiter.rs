@@ -69,7 +69,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         remaining,
                         reset,
-                        'Rate limit exceeded.',
+                        '0',
                     }
 
                 else
@@ -80,7 +80,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         remaining,
                         reset,
-                        'Rate limit not exceeded.',
+                        '1',
                     }
                 end
 
@@ -108,7 +108,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         remaining,
                         reset,
-                        'Rate limit exceeded.',
+                        '0',
                     }
                 else
                     redis.call('ZADD', key, now, now .. ':' .. redis.call('INCR', key_counter))
@@ -119,7 +119,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         remaining,
                         reset,
-                        'Rate limit not exceeded.',
+                        '1',
                     }
                 end
                 "#
@@ -162,7 +162,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         0,
                         reset,
-                        'Rate limit exceeded.',
+                        '0',
                     }
                 else
                     redis.call('HINCRBY', key, current_bucket, 1)
@@ -172,7 +172,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         remaining,
                         reset,
-                        'Rate limit not exceeded.',
+                        '1',
                     }
                 end
                 "#
@@ -207,7 +207,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         0,
                         ttl,
-                        'Rate limit exceeded.',
+                        '0',
                     }
                 else 
                     redis.call('HSET', key, 'count', new_count - 1)
@@ -216,7 +216,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         new_count - 1,
                         ttl,
-                        'Rate limit not exceeded.',
+                        '1',
                     }
                 end
                 "#
@@ -251,7 +251,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         0,
                         ttl,
-                        'Rate limit exceeded.',
+                        '0',
                     }
                 else 
                     redis.call('HSET', key, 'count', new_count + 1)
@@ -260,7 +260,7 @@ impl RateLimiterAlgorithms {
                         limit,
                         limit - math.ceil(new_count) - 1,
                         ttl,
-                        'Rate limit not exceeded.',
+                        '1',
                     }
                 end
                 "#

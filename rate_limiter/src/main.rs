@@ -125,7 +125,7 @@ async fn limiter_handler(
         limiter_rule.custom_tracking_key,
     )?;
 
-    let (message, headers) = execute_rate_limiting(
+    let headers = execute_rate_limiting(
         states.pool.clone(),
         &tracking_key,
         &associated_key,
@@ -135,19 +135,9 @@ async fn limiter_handler(
     )
     .await?;
 
-    match message.as_str() {
-        "Rate limit exceeded." => Ok((
-            axum::http::StatusCode::TOO_MANY_REQUESTS,
-            headers.to_headers(),
-            message,
-        )),
-        "Rate limit not exceeded." => {
-            Ok((axum::http::StatusCode::OK, headers.to_headers(), message))
-        }
-        _ => Ok((
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            headers.to_headers(),
-            message,
-        )),
-    }
+    Ok((
+        axum::http::StatusCode::OK,
+        headers.to_headers(),
+        "Rate limit not exceeded.".to_string(),
+    ))
 }

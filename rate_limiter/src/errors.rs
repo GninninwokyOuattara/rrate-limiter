@@ -4,13 +4,15 @@ use anyhow::anyhow;
 
 use axum::{
     body::Body,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
 
 use redis::RedisError;
 use rrl_core::tracing;
 use thiserror::Error;
+
+use crate::rate_limiter::RateLimiterHeaders;
 
 #[derive(Error, Debug)]
 pub enum LimiterError {
@@ -25,6 +27,9 @@ pub enum LimiterError {
     )]
     NoIpFound,
 
+    #[error("Rate limit exceeded")]
+    RateLimitExceeded(RateLimiterHeaders),
+
     #[error("Internal Server Error")]
     RedisError(#[from] RedisError),
 
@@ -37,12 +42,28 @@ pub enum LimiterError {
 impl IntoResponse for LimiterError {
     fn into_response(self) -> Response<Body> {
         tracing::error!("Error : {:#?}", &self);
+        let empty_headers = HeaderMap::new();
         let response = match &self {
-            LimiterError::RedisError(_err) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-            LimiterError::NoRouteMatch(_err) => (StatusCode::OK, self.to_string()),
-            LimiterError::Unknown(_error) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-            LimiterError::TrackedKeyNotFound(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            LimiterError::NoIpFound => (StatusCode::BAD_REQUEST, self.to_string()),
+            LimiterError::RedisError(_err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                empty_headers,
+                self.to_string(),
+            ),
+            LimiterError::NoRouteMatch(_err) => (StatusCode::OK, empty_headers, self.to_string()),
+            LimiterError::Unknown(_error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                empty_headers,
+                self.to_string(),
+            ),
+            LimiterError::TrackedKeyNotFound(_) => {
+                (StatusCode::BAD_REQUEST, empty_headers, self.to_string())
+            }
+            LimiterError::NoIpFound => (StatusCode::BAD_REQUEST, empty_headers, self.to_string()),
+            LimiterError::RateLimitExceeded(headers) => (
+                StatusCode::TOO_MANY_REQUESTS,
+                headers.to_headers(),
+                self.to_string(),
+            ),
         };
         response.into_response()
     }

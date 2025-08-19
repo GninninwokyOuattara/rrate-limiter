@@ -1,8 +1,9 @@
 use redis::{RedisError, aio::ConnectionManager};
 use rrl_core::RateLimiterAlgorithms;
 
-use crate::utils::make_redis_key;
+use crate::{errors::LimiterError, utils::make_redis_key};
 
+#[derive(Debug)]
 pub struct RateLimiterHeaders {
     limit: u64,     // Maximum number of requests allowed
     remaining: u64, // Number of requests remaining in the current window
@@ -29,7 +30,6 @@ impl RateLimiterHeaders {
         );
         headers.insert("X-RateLimit-Reset", self.reset.to_string().parse().unwrap());
         headers.insert("X-RateLimit-Policy", self.policy.parse().unwrap());
-        // headers.insert("Retry-After", self.retry_after.to_string().parse().unwrap());
         headers
     }
 }
@@ -41,11 +41,11 @@ pub async fn execute_rate_limiting(
     algorithm: RateLimiterAlgorithms,
     limit: u64,
     expiration: u64,
-) -> Result<(String, RateLimiterHeaders), RedisError> {
+) -> Result<RateLimiterHeaders, LimiterError> {
     let redis_key = make_redis_key(tracked_key, hashed_route, &algorithm);
     let script = redis::Script::new(algorithm.get_script());
 
-    let result: Vec<String> = script
+    let result: Vec<u64> = script
         .key(redis_key)
         .arg(limit)
         .arg(expiration)
@@ -53,13 +53,11 @@ pub async fn execute_rate_limiting(
         .await
         .unwrap();
 
-    Ok((
-        result[3].clone(),
-        RateLimiterHeaders::new(
-            result[0].parse().unwrap_or_default(),
-            result[1].parse().unwrap_or_default(),
-            result[2].parse().unwrap_or_default(),
-            algorithm.to_string(),
-        ),
-    ))
+    let headers = RateLimiterHeaders::new(result[0], result[1], result[2], algorithm.to_string());
+
+    if result[3] == 0 {
+        return Err(LimiterError::RateLimitExceeded(headers));
+    }
+
+    Ok(headers)
 }
