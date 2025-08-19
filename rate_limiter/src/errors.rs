@@ -20,6 +20,11 @@ pub enum LimiterError {
     #[error("Tracked key {0} not found in request headers")]
     TrackedKeyNotFound(String),
 
+    #[error(
+        "No IP found in request headers. Are you sure you are using a proxy? looked for [x-forwarded-for, x-real-ip, forwarded]"
+    )]
+    NoIpFound,
+
     #[error("Internal Server Error")]
     RedisError(#[from] RedisError),
 
@@ -37,6 +42,7 @@ impl IntoResponse for LimiterError {
             LimiterError::NoRouteMatch(_err) => (StatusCode::OK, self.to_string()),
             LimiterError::Unknown(_error) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             LimiterError::TrackedKeyNotFound(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            LimiterError::NoIpFound => (StatusCode::BAD_REQUEST, self.to_string()),
         };
         response.into_response()
     }

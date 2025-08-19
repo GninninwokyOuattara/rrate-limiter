@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use axum::http::HeaderMap;
 use matchit::Router;
 use matchit::Router as MatchitRouter;
@@ -7,7 +7,7 @@ use redis::{AsyncCommands, Commands, RedisError, aio::ConnectionManager};
 use rrl_core::{LimiterTrackingType, MinimalRule, RateLimiterAlgorithms, Rule, chrono, tracing};
 use std::collections::HashMap;
 
-use crate::errors;
+use crate::errors::{self, LimiterError};
 
 pub fn make_redis_key(
     key_tracked: &str,
@@ -98,7 +98,7 @@ pub fn get_tracked_key_from_header(
                 }
             }
 
-            Err(errors::LimiterError::TrackedKeyNotFound("".to_string()))
+            Err(errors::LimiterError::NoIpFound)
         }
         LimiterTrackingType::Header => {
             let custom_key = custom_header_key.context("Custom header should not be null")?;
@@ -284,4 +284,25 @@ pub fn instantiate_matcher_with_rules(rules: HashMap<String, MinimalRule>) -> Ro
         }
     }
     matcher
+}
+
+pub async fn get_rules_information_by_redis_json_key(
+    redis_connection: &mut ConnectionManager,
+    key: &str,
+) -> Result<Rule, LimiterError> {
+    let res: String = redis_connection
+        .json_get("rules", format!("$.{}", key).as_str())
+        .await?;
+    tracing::debug!("Rules retrieved: {}", &res);
+    let rules: Vec<Rule> =
+        serde_json::from_str(&res).map_err(|err| errors::LimiterError::Unknown(anyhow!(err)))?;
+    tracing::info!("Rules retrieved: {:?}", rules);
+
+    Ok(rules
+        .first()
+        .ok_or(errors::LimiterError::Unknown(anyhow!(
+            "No rule found for key: {}",
+            key
+        )))?
+        .clone())
 }
