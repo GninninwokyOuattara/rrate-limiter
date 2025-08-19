@@ -153,7 +153,3 @@ async fn limiter_handler(
 }
 
 // TODO: It is wrong to return 404 when a url is not found in the matcher. a 200 should be returned. 404 is meant to indicate that the resources was not found.
-
-// TODO: use ttl from the rule field to set a ttl for the rule allowing refresh when user update the configuration
-
-// TODO: implement read from db in case of cache misses and write back to redis db
