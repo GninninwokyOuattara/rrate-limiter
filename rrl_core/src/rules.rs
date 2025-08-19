@@ -1,5 +1,5 @@
 use chrono::Utc;
-use serde::{Deserialize, Serialize, de};
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 

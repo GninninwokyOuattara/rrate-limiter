@@ -36,7 +36,7 @@ pub fn _populate_redis_kv_rule_algorithm(
     Ok(())
 }
 
-pub async fn populate_redis_with_rules(
+pub async fn _populate_redis_with_rules(
     mut conn: ConnectionManager,
     rules: &Vec<Rule>,
 ) -> Result<(), RedisError> {
@@ -111,7 +111,7 @@ pub fn get_tracked_key_from_header(
     }
 }
 
-pub fn generate_dummy_rules() -> Vec<Rule> {
+pub fn _generate_dummy_rules() -> Vec<Rule> {
     vec![
         Rule {
             id: "user1".to_string(),

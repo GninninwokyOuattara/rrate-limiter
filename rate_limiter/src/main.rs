@@ -5,14 +5,13 @@ use axum::{
     routing::get,
 };
 use axum_macros::debug_handler;
-use matchit::Router as MatchitRouter;
 use parking_lot::RwLock;
 use rrl_core::{
     LimiterTrackingType, RateLimiterAlgorithms,
     tokio_postgres::{Client, NoTls},
     tracing, tracing_subscriber,
 };
-use std::{mem, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use redis::{AsyncCommands, aio::ConnectionManager};
@@ -21,10 +20,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use crate::{
     errors::LimiterError,
     rate_limiter::execute_rate_limiting,
-    utils::{
-        generate_dummy_rules, get_rules_from_redis, get_tracked_key_from_header,
-        instantiate_matcher_with_rules, populate_redis_with_rules,
-    },
+    utils::{get_rules_from_redis, get_tracked_key_from_header, instantiate_matcher_with_rules},
 };
 
 mod errors;
