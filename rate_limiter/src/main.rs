@@ -1,15 +1,13 @@
 use axum::{
     Router,
     extract::{Request, State},
+    http::HeaderMap,
     response::IntoResponse,
     routing::get,
 };
 use axum_macros::debug_handler;
 use parking_lot::RwLock;
-use rrl_core::{
-    tokio_postgres::{Client, NoTls},
-    tracing, tracing_subscriber,
-};
+use rrl_core::{tracing, tracing_subscriber};
 use std::sync::Arc;
 
 use redis::aio::ConnectionManager;
@@ -31,15 +29,10 @@ mod utils;
 struct States {
     route_matcher: Arc<RwLock<matchit::Router<String>>>,
     pool: ConnectionManager,
-    pg_client: Client,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let host = std::env::var("RL_POSTGRES_HOST").unwrap_or("localhost".to_string());
-    let port = std::env::var("RL_POSTGRES_PORT").unwrap_or("5432".to_string());
-    let user = std::env::var("RL_POSTGRES_USER").unwrap_or("postgres".to_string());
-    let password = std::env::var("RL_POSTGRES_PASSWORD").unwrap_or("postgres".to_string());
     let redis_host = std::env::var("RL_REDIS_HOST").unwrap_or("localhost".to_string());
     let redis_port = std::env::var("RL_REDIS_PORT").unwrap_or("6379".to_string());
 
@@ -50,20 +43,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-
-    tracing::debug!("connecting to postgres...");
-    let (pg_client, connection) = rrl_core::tokio_postgres::connect(
-        format!("host={host} port={port} user={user} password={password} dbname=rrate-limiter")
-            .as_str(),
-        NoTls,
-    )
-    .await?;
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            tracing::error!("connection error: {}", e);
-        }
-    });
 
     tracing::debug!("connecting to redis...");
     let client = redis::Client::open(format!(
@@ -96,7 +75,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let states = Arc::new(States {
         route_matcher: route_matcher.clone(),
         pool: redis_connection,
-        pg_client,
     });
 
     tracing::debug!("Starting server on port 3000");
@@ -131,6 +109,15 @@ async fn limiter_handler(
         get_rules_information_by_redis_json_key(&mut states.pool.clone(), &associated_key)
             .await
             .unwrap();
+
+    // In case the rule is disabled
+    if &limiter_rule.status == &false {
+        return Ok((
+            axum::http::StatusCode::OK,
+            HeaderMap::default(),
+            "Rate limit not exceeded.".to_string(),
+        ));
+    }
 
     let tracking_key = get_tracked_key_from_header(
         request.headers(),
