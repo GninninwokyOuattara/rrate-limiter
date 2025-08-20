@@ -11,6 +11,20 @@ services:
     depends_on:
       - redis
       - postgres
+      - watcher
+    environment:
+      - RL_REDIS_HOST=redis
+      - RL_REDIS_PORT=6379
+  
+  watcher:
+    restart: "always"
+    image: rrl/watcher:latest
+    build:
+      dockerfile: watcher.Dockerfile
+    container_name: watcher
+    depends_on:
+      - redis
+      - postgres
     environment:
       - RL_POSTGRES_HOST=postgres
       - RL_POSTGRES_PORT=5432
