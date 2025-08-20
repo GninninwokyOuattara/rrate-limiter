@@ -41,7 +41,7 @@ pub enum LimiterError {
 
 impl IntoResponse for LimiterError {
     fn into_response(self) -> Response<Body> {
-        tracing::error!("Error : {:#?}", &self);
+        tracing::warn!("Error : {:#?}", &self);
         let empty_headers = HeaderMap::new();
         let response = match &self {
             LimiterError::RedisError(_err) => (
