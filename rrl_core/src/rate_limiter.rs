@@ -99,22 +99,29 @@ impl RateLimiterAlgorithms {
                 redis.call('ZREMRANGEBYSCORE', key, 0, now - expiration)
                 local count = redis.call('ZCARD', key)
                 redis.call('EXPIRE', key, expiration + 1)
+                
+                
 
                 if count + 1 > limit then
                     redis.call('EXPIRE', key_counter, expiration + 1)
-                    local remaining = limit - count
-                    local reset = expiration - (now % expiration)
+                    local oldest_time_and_member = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+                    local oldest_time = tonumber(oldest_time_and_member[2])
+                    local reset = (oldest_time + expiration) - now
+                    
                     return {
                         limit,
-                        remaining,
+                        0,
                         reset,
                         '0',
                     }
                 else
                     redis.call('ZADD', key, now, now .. ':' .. redis.call('INCR', key_counter))
                     redis.call('EXPIRE', key_counter, expiration + 1)
+                    local oldest_time_and_member = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+                    local oldest_time = tonumber(oldest_time_and_member[2])
+                    local reset = (oldest_time + expiration) - now
                     local remaining = limit - count - 1
-                    local reset = expiration - (now % expiration)
+                    
                     return {
                         limit,
                         remaining,
