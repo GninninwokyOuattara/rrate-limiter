@@ -1,4 +1,4 @@
-use redis::{RedisError, aio::ConnectionManager};
+use redis::aio::ConnectionManager;
 use rrl_core::RateLimiterAlgorithms;
 
 use crate::{errors::LimiterError, utils::make_redis_key};
