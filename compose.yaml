@@ -4,9 +4,8 @@ services:
     image: rrl/rate_limiter:latest
     build:
       dockerfile: rate_limiter.Dockerfile
-    # container_name: rate_limiter
-    ports:
-      - 3000:3000
+    # ports:
+    #   - 3000:3000
     depends_on:
       - redis
       - postgres
@@ -14,8 +13,13 @@ services:
     environment:
       - RL_REDIS_HOST=redis
       - RL_REDIS_PORT=6379
+      - RUST_LOG=error
+    
     deploy:
-      replicas: 1
+      replicas: 2
+      resources:
+        limits:
+          memory: 50M
 
 
   watcher:
@@ -83,6 +87,7 @@ services:
 
   nginx:
     image: nginx
+    container_name: nginx
     depends_on:
       - rate_limiter
     volumes:
