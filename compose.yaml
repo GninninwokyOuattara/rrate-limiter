@@ -1,11 +1,10 @@
 services:
-  
   rate_limiter:
     restart: "always"
     image: rrl/rate_limiter:latest
     build:
       dockerfile: rate_limiter.Dockerfile
-    container_name: rate_limiter
+    # container_name: rate_limiter
     ports:
       - 3000:3000
     depends_on:
@@ -15,7 +14,10 @@ services:
     environment:
       - RL_REDIS_HOST=redis
       - RL_REDIS_PORT=6379
-  
+    deploy:
+      replicas: 1
+
+
   watcher:
     restart: "always"
     image: rrl/watcher:latest
@@ -49,7 +51,7 @@ services:
       - RL_POSTGRES_PASSWORD=postgres
       - RL_REDIS_HOST=redis
       - RL_REDIS_PORT=6379
-    
+
   redis:
     restart: always
     image: redis:latest
@@ -62,7 +64,7 @@ services:
   postgres:
     restart: always
     image: rl_postgres:latest
-    build: 
+    build:
       dockerfile: db.Dockerfile
     container_name: postgres
     ports:
@@ -72,18 +74,27 @@ services:
       - POSTGRES_PASSWORD=postgres
       - PGUSER=postgres
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: ["CMD", "pg_isready"]
       interval: 10s
       timeout: 5s
       retries: 5
     volumes:
       - db-data:/var/lib/postgresql/data
 
+  nginx:
+    image: nginx
+    depends_on:
+      - rate_limiter
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "8080:80"
+    environment:
+      - NGINX_PORT=80
+
 volumes:
   db-data:
   redis-data:
-
 # secrets:
 #   db-password:
 #     file: db/password.txt
-
