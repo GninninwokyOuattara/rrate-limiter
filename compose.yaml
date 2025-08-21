@@ -17,9 +17,14 @@ services:
     
     deploy:
       replicas: 2
-      resources:
-        limits:
-          memory: 50M
+      # resources:
+      #   limits:
+      #     cpus: '0.10'
+      #     memory: 50M
+      #   reservations:
+      #     cpus: '0.10'
+      #     memory: 20M
+          
 
 
   watcher:
