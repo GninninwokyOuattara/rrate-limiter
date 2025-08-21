@@ -1,5 +1,5 @@
 ARG RUST_VERSION=1.89.0
-ARG APP_NAME=rate-limiter
+ARG APP_NAME=watcher
 
 FROM rust:${RUST_VERSION}-alpine AS build
 ARG APP_NAME
