@@ -80,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::debug!("Starting server on port 3000");
 
     let app = Router::new()
-        .route("/", get(limiter_handler))
+        .route("/", get(async move || "WAAAGH!"))
         .fallback(get(limiter_handler))
         .with_state(states.clone());
 
