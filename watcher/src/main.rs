@@ -8,6 +8,7 @@ use rrl_core::{
     tokio_postgres::NoTls,
     tracing, tracing_subscriber,
 };
+use serde_json::json;
 use tokio::time::{self, Duration};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -94,6 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn make_redis_script(rules: Vec<Rule>) -> Script {
+    // Create the root if it does not exists.
     let check_initialization = r"
         local success, objlen_result = pcall(redis.call, 'JSON.OBJLEN', 'rules', '$')
         if success == false then
@@ -101,46 +103,33 @@ fn make_redis_script(rules: Vec<Rule>) -> Script {
         end
 
     ";
+
+    // Build the rules, redis call after redis call
     let mut script_rules: Vec<String> = vec![];
     script_rules.push(check_initialization.to_string());
 
     rules.into_iter().for_each(|rule| {
-        let id = rule.id;
-        let id_field = format!("{}{}{}", r#""id":""#, id.clone(), r#"""#);
-        let route = format!("{}{}{}", r#""route":""#, rule.route, r#"""#);
-        let algorithm = format!(
-            "{}{}{}",
-            r#""algorithm":""#,
-            rule.algorithm.to_string(),
-            r#"""#
+        let id = rule.id.clone().to_string();
+        let rule_json = json!(
+            {
+                "id": rule.id,
+                "route": rule.route,
+                "algorithm": rule.algorithm.to_string(),
+                "tracking_type": rule.tracking_type.to_string(),
+                "limit": rule.limit,
+                "expiration": rule.expiration,
+                "custom_tracking_key": rule.custom_tracking_key.unwrap_or("".to_string()),
+                "status": rule.status.to_string(),
+                "date_creation": rule.date_creation,
+                "date_modification": rule.date_modification
+            }
         );
 
-        let limit = format!("{}{}{}", r#""limit":"#, rule.limit, r#""#);
-        let expiration = format!("{}{}{}", r#""expiration":"#, rule.expiration, r#""#);
-        let tracking_type = format!(
-            "{}{}{}",
-            r#""tracking_type":""#,
-            rule.tracking_type.to_string(),
-            r#"""#
-        );
-        let custom_tracking_key = format!(
-            "{}{}{}",
-            r#""custom_tracking_key":""#,
-            rule.custom_tracking_key.unwrap_or("".to_string()),
-            r#"""#
-        );
-        let status = format!("{}{}{}", r#""status":""#, rule.status.to_string(), r#"""#);
-        let key = format!("{}{}{}", r"'$.", id.to_string(), r"'");
-
-        let script = format!(
-            r"
-            redis.call('JSON.SET', 'rules', {key} , {} {id_field}, {route}, {algorithm}, {limit}, {expiration}, {tracking_type}, {custom_tracking_key}, {status} {})
-            ", r#"'{"#, r#"}'"#
-        );
-
+        let script = format!(r#"redis.call('JSON.SET', 'rules', '$.{id}' , '{rule_json}')"#);
         script_rules.push(script);
     });
 
+    // Finilize the script by publishing the update
     let publish = "redis.call('PUBLISH', 'rl_update', 'update')".to_string();
     let script_rules = script_rules.join("\n");
     Script::new(&format!("{}\n{}", script_rules, publish))
