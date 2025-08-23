@@ -296,7 +296,6 @@ pub async fn get_rules_information_by_redis_json_key(
     tracing::debug!("Rules retrieved: {}", &res);
     let rules: Vec<Rule> =
         serde_json::from_str(&res).map_err(|err| errors::LimiterError::Unknown(anyhow!(err)))?;
-    tracing::info!("Rules retrieved: {:?}", rules);
 
     Ok(rules
         .first()
