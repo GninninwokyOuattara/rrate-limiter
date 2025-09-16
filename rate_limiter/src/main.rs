@@ -111,7 +111,9 @@ async fn limiter_handler(
             .unwrap();
 
     // In case the rule is disabled
-    if &limiter_rule.status == &false {
+    if let Some(v) = &limiter_rule.active
+        && *v == false
+    {
         return Ok((
             axum::http::StatusCode::OK,
             HeaderMap::default(),

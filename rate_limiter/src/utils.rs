@@ -4,7 +4,7 @@ use matchit::Router;
 use matchit::Router as MatchitRouter;
 use redis::JsonAsyncCommands;
 use redis::{AsyncCommands, Commands, RedisError, aio::ConnectionManager};
-use rrl_core::{LimiterTrackingType, MinimalRule, RateLimiterAlgorithms, Rule, chrono, tracing};
+use rrl_core::{LimiterTrackingType, MinimalRule, RateLimiterAlgorithms, Rule, tracing};
 use std::collections::HashMap;
 
 use crate::errors::{self, LimiterError};
@@ -122,9 +122,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 60,
             tracking_type: LimiterTrackingType::Header,
             custom_tracking_key: Some("product_key".to_string()),
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
         Rule {
             id: "user2".to_string(),
@@ -135,9 +133,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
         Rule {
             id: "user2".to_string(),
@@ -148,9 +144,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 120,
             tracking_type: LimiterTrackingType::Header,
             custom_tracking_key: Some("x-api-key".to_string()),
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
         Rule {
             id: "user3".to_string(),
@@ -161,9 +155,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 300,
             tracking_type: LimiterTrackingType::Header,
             custom_tracking_key: Some("x-api-key".to_string()),
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
         Rule {
             // FIXED WINDOW TEST
@@ -175,9 +167,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
         Rule {
             // SLIDING WINDOW LOG TEST
@@ -189,9 +179,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
         Rule {
             // SLIDING WINDOW COUNTER TEST
@@ -203,9 +191,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
         Rule {
             // TOKEN BUCKET TEST
@@ -217,9 +203,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
         Rule {
             // LEAKY BUCKET TEST
@@ -231,9 +215,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 120,
             tracking_type: LimiterTrackingType::IP,
             custom_tracking_key: None,
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
         Rule {
             // Direct
@@ -245,9 +227,7 @@ pub fn _generate_dummy_rules() -> Vec<Rule> {
             expiration: 5,
             tracking_type: LimiterTrackingType::Header,
             custom_tracking_key: Some("foo".to_string()),
-            status: true,
-            date_creation: chrono::Utc::now(),
-            date_modification: chrono::Utc::now(),
+            active: Some(true),
         },
     ]
 }

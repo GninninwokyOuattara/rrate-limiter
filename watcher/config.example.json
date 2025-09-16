@@ -1,0 +1,20 @@
+[
+  {
+    "route": "/",
+    "limit": 1,
+    "expiration": 1,
+    "algorithm": "fw",
+    "tracking_type": "ip",
+    "custom_tracking_key": "",
+    "active": false
+  },
+  {
+    "route": "/api/v1/orders",
+    "limit": 1,
+    "expiration": 1,
+    "algorithm": "swc",
+    "tracking_type": "ip",
+    "custom_tracking_key": "",
+    "active": true
+  }
+]
