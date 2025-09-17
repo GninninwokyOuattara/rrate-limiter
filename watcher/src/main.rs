@@ -44,7 +44,7 @@ fn make_redis_script(rules: Vec<Rule>) -> Script {
                 "limit": rule.limit,
                 "expiration": rule.expiration,
                 "custom_tracking_key": rule.custom_tracking_key.unwrap_or("".to_string()),
-                "active": rule.active
+                "active": rule.active.unwrap_or(true).to_string()
             }
         );
 

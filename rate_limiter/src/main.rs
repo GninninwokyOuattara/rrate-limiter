@@ -106,9 +106,7 @@ async fn limiter_handler(
 
     // We retrieve the algorithm, expiration and limit from redis
     let limiter_rule =
-        get_rules_information_by_redis_json_key(&mut states.pool.clone(), &associated_key)
-            .await
-            .unwrap();
+        get_rules_information_by_redis_json_key(&mut states.pool.clone(), &associated_key).await?;
 
     // In case the rule is disabled
     if let Some(v) = &limiter_rule.active
