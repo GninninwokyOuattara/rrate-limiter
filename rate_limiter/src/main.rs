@@ -1,11 +1,6 @@
-use axum::{
-    Router,
-    extract::{Request, State},
-    http::HeaderMap,
-    response::IntoResponse,
-    routing::get,
-};
-use axum_macros::debug_handler;
+use anyhow::anyhow;
+use bytes::Bytes;
+use hyper_util::rt::TokioIo;
 use parking_lot::RwLock;
 use rrl_core::{tracing, tracing_subscriber};
 use std::sync::Arc;
@@ -21,6 +16,13 @@ use crate::{
         instantiate_matcher_with_rules,
     },
 };
+
+use std::net::SocketAddr;
+
+use http_body_util::Full;
+use hyper::{Request, Response};
+use hyper::{server::conn::http1, service::service_fn};
+use tokio::net::TcpListener;
 
 mod errors;
 mod rate_limiter;
@@ -44,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    tracing::debug!("connecting to redis...");
+    tracing::info!("connecting to redis...");
     let client = redis::Client::open(format!(
         "redis://{}:{}?protocol=resp3",
         redis_host, redis_port
@@ -55,20 +57,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set_automatic_resubscription();
     let mut redis_connection = client.get_connection_manager_with_config(config).await?;
     let mut con_for_task = redis_connection.clone();
-    tracing::debug!("Managed connection to redis established.");
+    tracing::info!("Managed connection to redis established.");
     redis_connection.subscribe("rl_update").await.unwrap(); // We actually want to fails if it is impossible to subscribe initially.
-    tracing::debug!("Subscribed to rl_update channel.");
+    tracing::info!(
+        "Subscribed to rl_update channel. Updates will trigger a rebuild of the matcher."
+    );
 
     let rules_config = get_rules_from_redis(&mut redis_connection).await.unwrap();
     let route_matcher = Arc::new(RwLock::new(instantiate_matcher_with_rules(rules_config))); // Initial instance of the matcher.
     let route_matcher_for_task = Arc::clone(&route_matcher);
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            tracing::debug!("Received message from redis: {msg:?}");
+            tracing::info!("Event received: {msg:?}");
             let new_rules = get_rules_from_redis(&mut con_for_task).await.unwrap();
+            let length = new_rules.len();
             let new_router = instantiate_matcher_with_rules(new_rules);
             *route_matcher_for_task.write() = new_router;
-            tracing::debug!("Updated route matcher.");
+            tracing::info!("Matcher has been rebuilt with {length} routes.");
         }
     });
 
@@ -77,69 +82,90 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pool: redis_connection,
     });
 
-    tracing::debug!("Starting server on port 3000");
+    tracing::info!("Starting server on port 3000");
 
-    let app = Router::new()
-        .route("/", get(async move || "WAAAGH!"))
-        .fallback(get(limiter_handler))
-        .with_state(states.clone());
+    let addr: SocketAddr = ([0, 0, 0, 0], 3000).into();
+    let listener = TcpListener::bind(addr).await?;
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-    Ok(())
-}
+    loop {
+        let (stream, _) = listener.accept().await?;
+        let io = TokioIo::new(stream);
+        let states_in_loop = states.clone();
 
-#[debug_handler]
-async fn limiter_handler(
-    State(states): State<Arc<States>>,
-    request: Request,
-) -> anyhow::Result<impl IntoResponse, LimiterError> {
-    // Finding which pattern match the uri using the matcher
-    let associated_key = states
-        .route_matcher
-        .clone()
-        .read()
-        .at(request.uri().path())
-        .map_err(|_err| LimiterError::NoRouteMatch(request.uri().path().to_string()))?
-        .value
-        .clone();
-
-    // We retrieve the algorithm, expiration and limit from redis
-    let limiter_rule =
-        get_rules_information_by_redis_json_key(&mut states.pool.clone(), &associated_key).await?;
-
-    // In case the rule is disabled
-    if let Some(v) = &limiter_rule.active
-        && *v == false
-    {
-        return Ok((
-            axum::http::StatusCode::OK,
-            HeaderMap::default(),
-            "Rate limit not exceeded.".to_string(),
-        ));
+        tokio::spawn(async move {
+            let _ = http1::Builder::new()
+                .serve_connection(
+                    io,
+                    service_fn(move |req| {
+                        let cloned_states_for_limiter = states_in_loop.clone();
+                        limiter_handler(cloned_states_for_limiter, req)
+                    }),
+                )
+                .await;
+        });
     }
-
-    let tracking_key = get_tracked_key_from_header(
-        request.headers(),
-        &limiter_rule.tracking_type,
-        limiter_rule.custom_tracking_key,
-    )?;
-
-    let headers = execute_rate_limiting(
-        states.pool.clone(),
-        &tracking_key,
-        &associated_key,
-        limiter_rule.algorithm,
-        limiter_rule.limit as u64,
-        limiter_rule.expiration as u64,
-    )
-    .await?;
-
-    Ok((
-        axum::http::StatusCode::OK,
-        headers.to_headers(),
-        "Rate limit not exceeded.".to_string(),
-    ))
 }
 
-// TODO: fix sorted set not having a ttl resulting in the data staying in redis forever
+async fn limiter_handler(
+    states: Arc<States>,
+    request: Request<hyper::body::Incoming>,
+) -> anyhow::Result<Response<Full<Bytes>>, LimiterError> {
+    let res = async {
+        // Retrieve the key associated with this route using the matcher.
+        // That key will be used to index the rule information inside the from the cache.
+        let associated_key = states
+            .route_matcher
+            .clone()
+            .read()
+            .at(request.uri().path())
+            .map_err(|_err| LimiterError::NoRouteMatch(request.uri().path().to_string()))?
+            .value
+            .clone();
+
+        // Retrieve the rule informations from the redis cache.
+        let limiter_rule =
+            get_rules_information_by_redis_json_key(&mut states.pool.clone(), &associated_key)
+                .await?;
+
+        // In case the rule is disabled (active=false)
+        if let Some(v) = &limiter_rule.active
+            && *v == false
+        {
+            let response = Response::builder()
+                .body(Full::new(Bytes::from("Rate limit not exceeded.")))
+                .map_err(|_err| LimiterError::Unknown(anyhow!("Unable to build response")));
+
+            return response;
+        }
+
+        let tracking_key = get_tracked_key_from_header(
+            request.headers(),
+            &limiter_rule.tracking_type,
+            limiter_rule.custom_tracking_key,
+        )?;
+
+        let headers = execute_rate_limiting(
+            states.pool.clone(),
+            &tracking_key,
+            &associated_key,
+            limiter_rule.algorithm,
+            limiter_rule.limit as u64,
+            limiter_rule.expiration as u64,
+        )
+        .await?;
+
+        let response = Response::builder()
+            .header("limit", headers.limit)
+            .header("remaining", headers.remaining)
+            .header("reset", headers.reset)
+            .header("policy", headers.policy)
+            .body(Full::new(Bytes::from("Rate limit not exceeded")))
+            .map_err(|_err| LimiterError::Unknown(anyhow!("Unable to build response")));
+        return response;
+    };
+
+    return match res.await {
+        Ok(res) => Ok(res),
+        Err(err) => Ok(err.into_hyper_response()),
+    };
+}

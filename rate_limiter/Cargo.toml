@@ -15,3 +15,7 @@ anyhow = "1.0.98"
 redis = {version = "0.32.5", features = ["connection-manager", "tokio-comp", "json"]}
 parking_lot = "0.12.4"
 serde_json = "1.0.142"
+http-body-util = "0.1"
+hyper-util = { version = "0.1.17", features = ["full"] }
+hyper = { version = "1.7.0", features = ["full"] }
+bytes = "1.10.1"

@@ -5,10 +5,10 @@ use crate::{errors::LimiterError, utils::make_redis_key};
 
 #[derive(Debug)]
 pub struct RateLimiterHeaders {
-    limit: u64,     // Maximum number of requests allowed
-    remaining: u64, // Number of requests remaining in the current window
-    reset: u64,     // Time in seconds until the rate limit resets
-    policy: String, // The rate limiting policy used
+    pub limit: u64,     // Maximum number of requests allowed
+    pub remaining: u64, // Number of requests remaining in the current window
+    pub reset: u64,     // Time in seconds until the rate limit resets
+    pub policy: String, // The rate limiting policy used
 }
 
 impl RateLimiterHeaders {
@@ -20,29 +20,17 @@ impl RateLimiterHeaders {
             policy,
         }
     }
-
-    pub fn to_headers(&self) -> axum::http::HeaderMap {
-        let mut headers = axum::http::HeaderMap::new();
-        headers.insert("X-RateLimit-Limit", self.limit.to_string().parse().unwrap());
-        headers.insert(
-            "X-RateLimit-Remaining",
-            self.remaining.to_string().parse().unwrap(),
-        );
-        headers.insert("X-RateLimit-Reset", self.reset.to_string().parse().unwrap());
-        headers.insert("X-RateLimit-Policy", self.policy.parse().unwrap());
-        headers
-    }
 }
 
 pub async fn execute_rate_limiting(
     mut pool: ConnectionManager,
     tracked_key: &str,
-    hashed_route: &str,
+    rule_redis_config_key: &str,
     algorithm: RateLimiterAlgorithms,
     limit: u64,
     expiration: u64,
 ) -> Result<RateLimiterHeaders, LimiterError> {
-    let redis_key = make_redis_key(tracked_key, hashed_route, &algorithm);
+    let redis_key = make_redis_key(tracked_key, rule_redis_config_key, &algorithm);
     let script = redis::Script::new(algorithm.get_script());
 
     let result: Vec<u64> = script

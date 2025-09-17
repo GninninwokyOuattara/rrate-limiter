@@ -2,12 +2,9 @@ use std::sync::PoisonError;
 
 use anyhow::anyhow;
 
-use axum::{
-    body::Body,
-    http::{HeaderMap, StatusCode},
-    response::{IntoResponse, Response},
-};
-
+use bytes::Bytes;
+use http_body_util::Full;
+use hyper::{Response, StatusCode};
 use redis::RedisError;
 use rrl_core::tracing;
 use thiserror::Error;
@@ -37,35 +34,39 @@ pub enum LimiterError {
     Unknown(#[from] anyhow::Error),
 }
 
-// TODO: Improve the errors to include more context. just a string is a pain to debug.
-
-impl IntoResponse for LimiterError {
-    fn into_response(self) -> Response<Body> {
+impl LimiterError {
+    pub fn into_hyper_response(self) -> Response<Full<Bytes>> {
         tracing::warn!("Error : {:#?}", &self);
-        let empty_headers = HeaderMap::new();
-        let response = match &self {
-            LimiterError::RedisError(_err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                empty_headers,
-                self.to_string(),
-            ),
-            LimiterError::NoRouteMatch(_err) => (StatusCode::OK, empty_headers, self.to_string()),
-            LimiterError::Unknown(_error) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                empty_headers,
-                self.to_string(),
-            ),
-            LimiterError::TrackedKeyNotFound(_) => {
-                (StatusCode::BAD_REQUEST, empty_headers, self.to_string())
-            }
-            LimiterError::NoIpFound => (StatusCode::BAD_REQUEST, empty_headers, self.to_string()),
-            LimiterError::RateLimitExceeded(headers) => (
-                StatusCode::TOO_MANY_REQUESTS,
-                headers.to_headers(),
-                self.to_string(),
-            ),
-        };
-        response.into_response()
+        match self {
+            LimiterError::NoRouteMatch(msg) => Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Full::new(Bytes::from(msg)))
+                .unwrap(),
+            LimiterError::TrackedKeyNotFound(msg) => Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Full::new(Bytes::from(msg)))
+                .unwrap(),
+            LimiterError::NoIpFound => Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Full::new(Bytes::from(LimiterError::NoIpFound.to_string())))
+                .unwrap(),
+            LimiterError::RateLimitExceeded(headers) => Response::builder()
+                .status(StatusCode::TOO_MANY_REQUESTS)
+                .header("limit", headers.limit)
+                .header("remaining", headers.remaining)
+                .header("reset", headers.reset)
+                .header("policy", headers.policy)
+                .body(Full::new(Bytes::from("Rate limit exceeded!")))
+                .unwrap(),
+            LimiterError::RedisError(_) => Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from("Internal Server Error")))
+                .unwrap(),
+            LimiterError::Unknown(_) => Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from("Internal Server Error")))
+                .unwrap(),
+        }
     }
 }
 
