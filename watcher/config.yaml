@@ -1,21 +1,40 @@
 - route: "/"
   limit: 1
-  expiration: 1
+  expiration: 30
   algorithm: "fw"
   tracking_type: "ip"
   custom_tracking_key: ""
 
-- route: "/api/v1/orders"
+- route: "/fw"
   limit: 1
-  expiration: 1
-  algorithm: "swc"
-  tracking_type: "header"
-  custom_tracking_key: "api-key"
-  active : true
+  expiration: 30
+  algorithm: "fw"
+  tracking_type: "ip"
 
-- route: "/api/v1/commands"
-  limit: 1
-  expiration: 1
+
+- route: "/swl"
+  limit: 100
+  expiration: 30
   algorithm: "swl"
   tracking_type: "ip"
-  custom_tracking_key: ""
+  
+# swc
+- route: "/swc"
+  limit: 1
+  expiration: 30
+  algorithm: "swc"
+  tracking_type: "ip"
+
+# tb
+- route: "/tb"
+  limit: 1
+  expiration: 30
+  algorithm: "tb"
+  tracking_type: "ip"
+
+# lb
+- route: "/lb"
+  limit: 1
+  expiration: 30
+  algorithm: "lb"
+  tracking_type: "ip"
