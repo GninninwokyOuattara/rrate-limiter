@@ -8,12 +8,10 @@ services:
       - 3000:3000
     depends_on:
       - redis
-      - postgres
-      - watcher
     environment:
       - RL_REDIS_HOST=redis
       - RL_REDIS_PORT=6379
-      - RUST_LOG=error
+      - RUST_LOG=info
     
     deploy:
       replicas: 1
@@ -28,38 +26,19 @@ services:
 
 
   watcher:
-    restart: "always"
+    # restart: "always"
     image: rrl/watcher:latest
     build:
       dockerfile: watcher.Dockerfile
     container_name: watcher
     depends_on:
       - redis
-      - postgres
     environment:
-      - RL_POSTGRES_HOST=postgres
-      - RL_POSTGRES_PORT=5432
-      - RL_POSTGRES_USER=postgres
-      - RL_POSTGRES_PASSWORD=postgres
       - RL_REDIS_HOST=redis
       - RL_REDIS_PORT=6379
-  admin:
-    restart: "always"
-    image: rrl/admin:latest
-    build:
-      dockerfile: admin.Dockerfile
-    container_name: admin
-    ports:
-      - 3001:3001
-    depends_on:
-      - postgres
-    environment:
-      - RL_POSTGRES_HOST=postgres
-      - RL_POSTGRES_PORT=5432
-      - RL_POSTGRES_USER=postgres
-      - RL_POSTGRES_PASSWORD=postgres
-      - RL_REDIS_HOST=redis
-      - RL_REDIS_PORT=6379
+      - RL_CONFIG_FILE_PATH=/config.yaml
+    volumes:
+      - ./watcher/config.yaml:/config.yaml
 
   redis:
     restart: always
@@ -70,25 +49,25 @@ services:
     volumes:
       - redis-data:/data
 
-  postgres:
-    restart: always
-    image: rl_postgres:latest
-    build:
-      dockerfile: db.Dockerfile
-    container_name: postgres
-    ports:
-      - 5432:5432
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - PGUSER=postgres
-    healthcheck:
-      test: ["CMD", "pg_isready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    volumes:
-      - db-data:/var/lib/postgresql/data
+  # postgres:
+  #   restart: always
+  #   image: rl_postgres:latest
+  #   build:
+  #     dockerfile: db.Dockerfile
+  #   container_name: postgres
+  #   ports:
+  #     - 5432:5432
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #     - PGUSER=postgres
+  #   healthcheck:
+  #     test: ["CMD", "pg_isready"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
 
   nginx:
     image: nginx
@@ -105,6 +84,4 @@ services:
 volumes:
   db-data:
   redis-data:
-# secrets:
-#   db-password:
-#     file: db/password.txt
+
