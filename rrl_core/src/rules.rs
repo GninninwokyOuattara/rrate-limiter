@@ -1,7 +1,6 @@
 use redis::Connection;
 use serde::{Deserialize, Serialize, de};
 use std::collections::HashMap;
-use tokio_postgres::Row;
 use uuid::Uuid;
 
 use crate::{LimiterTrackingType, RateLimiterAlgorithms};
@@ -48,25 +47,6 @@ impl Rule {
             custom_tracking_key,
             active: active.or(Some(true)),
         }
-    }
-}
-
-impl TryFrom<Row> for Rule {
-    type Error = Box<dyn std::error::Error>;
-
-    fn try_from(value: Row) -> Result<Self, Self::Error> {
-        // let algorithm: RateLimiterAlgorithms = value.get::<_, String>("algorithm").try_into()?;
-
-        Ok(Rule {
-            id: value.get::<_, Uuid>("id").into(),
-            route: value.get("route"),
-            algorithm: value.get("algorithm"),
-            tracking_type: value.get("tracking_type"),
-            limit: value.get("limit"),
-            expiration: value.get("expiration"),
-            custom_tracking_key: value.get("custom_tracking_key"),
-            active: value.get("active"),
-        })
     }
 }
 

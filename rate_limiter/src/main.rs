@@ -2,11 +2,13 @@ use anyhow::anyhow;
 use bytes::Bytes;
 use hyper_util::rt::TokioIo;
 use parking_lot::RwLock;
-use rrl_core::{tracing, tracing_subscriber};
+use rrl_core::{
+    redis::{self, aio::ConnectionManager},
+    tokio::{self, net::TcpListener},
+    tracing,
+    tracing_subscriber::{self, layer::SubscriberExt, util::SubscriberInitExt},
+};
 use std::sync::Arc;
-
-use redis::aio::ConnectionManager;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
     errors::LimiterError,
@@ -20,9 +22,7 @@ use crate::{
 use std::net::SocketAddr;
 
 use http_body_util::Full;
-use hyper::{Request, Response};
-use hyper::{server::conn::http1, service::service_fn};
-use tokio::net::TcpListener;
+use hyper::{Request, Response, server::conn::http1, service::service_fn};
 
 mod errors;
 mod rate_limiter;
@@ -129,7 +129,7 @@ async fn limiter_handler(
 
         // In case the rule is disabled (active=false)
         if let Some(v) = &limiter_rule.active
-            && *v == false
+            && !(*v)
         {
             let response = Response::builder()
                 .body(Full::new(Bytes::from("Rate limit not exceeded.")))
@@ -162,7 +162,7 @@ async fn limiter_handler(
             .header("policy", headers.policy)
             .body(Full::new(Bytes::from("Rate limit not exceeded")))
             .map_err(|_err| LimiterError::Unknown(anyhow!("Unable to build response")));
-        return response;
+        response
     };
 
     return match res.await {

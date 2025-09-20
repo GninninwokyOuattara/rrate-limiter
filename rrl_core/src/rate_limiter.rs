@@ -1,4 +1,3 @@
-use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 
 const FIXED_WINDOW: &str = "fw";
@@ -7,22 +6,16 @@ const SLIDING_WINDOW_LOG: &str = "swl";
 const LEAKY_BUCKET: &str = "lb";
 const TOKEN_BUCKET: &str = "tb";
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSql, FromSql)]
-#[postgres(name = "algorithm_type")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RateLimiterAlgorithms {
-    #[postgres(name = "fw")]
     #[serde(alias = "fw")]
     FixedWindow,
-    #[postgres(name = "swc")]
     #[serde(alias = "swc")]
     SlidingWindowCounter,
-    #[postgres(name = "swl")]
     #[serde(alias = "swl")]
     SlidingWindowLog,
-    #[postgres(name = "tb")]
     #[serde(alias = "tb")]
     TokenBucket,
-    #[postgres(name = "lb")]
     #[serde(alias = "lb")]
     LeakyBucket,
 }
@@ -291,13 +284,10 @@ impl TryFrom<String> for RateLimiterAlgorithms {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromSql, ToSql)]
-#[postgres(name = "tracking_type")]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LimiterTrackingType {
-    #[postgres(name = "ip")]
     #[serde(alias = "ip")]
     IP, // Should be tracked by the ip address of the requester
-    #[postgres(name = "header")]
     #[serde(alias = "header")]
     Header, // A custom header should be tracked
 }

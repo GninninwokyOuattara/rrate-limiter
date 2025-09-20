@@ -5,7 +5,7 @@ use anyhow::anyhow;
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::{Response, StatusCode};
-use redis::RedisError;
+use rrl_core::redis::RedisError;
 use rrl_core::tracing;
 use thiserror::Error;
 
@@ -59,16 +59,14 @@ impl LimiterError {
                 key: _,
                 msg: _,
                 route: _,
-            } => {
-                return Response::builder()
-                    .status(StatusCode::TOO_MANY_REQUESTS)
-                    .header("limit", headers.limit)
-                    .header("remaining", headers.remaining)
-                    .header("reset", headers.reset)
-                    .header("policy", headers.policy)
-                    .body(Full::new(Bytes::from("Rate limit exceeded!")))
-                    .unwrap();
-            }
+            } => Response::builder()
+                .status(StatusCode::TOO_MANY_REQUESTS)
+                .header("limit", headers.limit)
+                .header("remaining", headers.remaining)
+                .header("reset", headers.reset)
+                .header("policy", headers.policy)
+                .body(Full::new(Bytes::from("Rate limit exceeded!")))
+                .unwrap(),
             LimiterError::RedisError(_) => Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Full::new(Bytes::from("Internal Server Error")))

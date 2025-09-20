@@ -1,13 +1,10 @@
 [package]
-name = "watcher"
+name = "config-loader"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 rrl_core ={ path = "../rrl_core"}
-tokio = { version = "1.47.1", features = ["full"] }
 anyhow = "1.0.98"
-redis = {version = "0.32.5", features = ["connection-manager", "tokio-comp"]}
-serde_json = "1.0.143"
 serde_yaml = "0.9.34"
 serde = {version="1.0.225", features = ["derive"]}

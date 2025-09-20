@@ -1,15 +1,16 @@
-use std::path::{Path, PathBuf};
-
 use anyhow::Context;
-use redis::Script;
 use rrl_core::{
-    LimiterTrackingType, RateLimiterAlgorithms, Rule, get_rules_route_and_id, tracing,
-    tracing_subscriber,
+    LimiterTrackingType, RateLimiterAlgorithms, Rule, get_rules_route_and_id,
+    redis::{self, Script},
+    serde_json::json,
+    tokio, tracing,
+    tracing_subscriber::{self, layer::SubscriberExt, util::SubscriberInitExt},
 };
 use serde::Deserialize;
-use serde_json::json;
-use std::env;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 #[derive(Deserialize, Debug)]
 struct Configuration {
@@ -103,7 +104,7 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Parsing rules...");
     let rules: Vec<Rule> = serde_yaml::from_str::<Vec<Configuration>>(&content)
-        .with_context(|| format!("Invalid configuration file."))?
+        .with_context(|| "Invalid configuration file.".to_string())?
         .into_iter()
         .map(|c| {
             if let Some(id) = rules_to_ids.get(&c.route) {

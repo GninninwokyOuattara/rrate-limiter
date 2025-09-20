@@ -1,5 +1,5 @@
 use redis::aio::ConnectionManager;
-use rrl_core::{RateLimiterAlgorithms, tracing};
+use rrl_core::{RateLimiterAlgorithms, redis, tracing};
 
 use crate::{errors::LimiterError, utils::make_redis_key};
 

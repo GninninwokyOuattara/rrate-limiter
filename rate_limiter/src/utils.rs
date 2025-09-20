@@ -2,9 +2,11 @@ use anyhow::{Context, anyhow};
 use hyper::HeaderMap;
 use matchit::Router;
 use matchit::Router as MatchitRouter;
-use redis::JsonAsyncCommands;
-use redis::{AsyncCommands, Commands, RedisError, aio::ConnectionManager};
-use rrl_core::{LimiterTrackingType, MinimalRule, RateLimiterAlgorithms, Rule, tracing};
+use rrl_core::{
+    LimiterTrackingType, MinimalRule, RateLimiterAlgorithms, Rule,
+    redis::{self, AsyncCommands, Commands, JsonAsyncCommands, RedisError, aio::ConnectionManager},
+    serde_json, tracing,
+};
 use std::collections::HashMap;
 
 use crate::errors::{self, LimiterError};
