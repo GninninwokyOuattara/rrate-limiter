@@ -25,12 +25,12 @@ services:
           
 
 
-  watcher:
+  config_loader:
     # restart: "always"
-    image: rrl/watcher:latest
+    image: rrl/config_loader:latest
     build:
-      dockerfile: watcher.Dockerfile
-    container_name: watcher
+      dockerfile: config_loader.Dockerfile
+    container_name: config_loader
     depends_on:
       - redis
     environment:
@@ -38,7 +38,7 @@ services:
       - RL_REDIS_PORT=6379
       - RL_CONFIG_FILE_PATH=/config.yaml
     volumes:
-      - ./watcher/config.yaml:/config.yaml
+      - ./config_loader/config.yaml:/config.yaml
 
   redis:
     restart: always
@@ -49,25 +49,6 @@ services:
     volumes:
       - redis-data:/data
 
-  # postgres:
-  #   restart: always
-  #   image: rl_postgres:latest
-  #   build:
-  #     dockerfile: db.Dockerfile
-  #   container_name: postgres
-  #   ports:
-  #     - 5432:5432
-  #   environment:
-  #     - POSTGRES_USER=postgres
-  #     - POSTGRES_PASSWORD=postgres
-  #     - PGUSER=postgres
-  #   healthcheck:
-  #     test: ["CMD", "pg_isready"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #   volumes:
-  #     - db-data:/var/lib/postgresql/data
 
   nginx:
     image: nginx
