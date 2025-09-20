@@ -718,6 +718,7 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-util",
+ "lazy_static",
  "matchit",
  "parking_lot",
  "rrl_core",

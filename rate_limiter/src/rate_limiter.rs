@@ -1,5 +1,11 @@
+use lazy_static::lazy_static;
 use redis::aio::ConnectionManager;
-use rrl_core::{RateLimiterAlgorithms, redis, tracing};
+use rrl_core::{
+    RateLimiterAlgorithms,
+    redis::{self, Script},
+    tracing,
+};
+use std::collections::HashMap;
 
 use crate::{errors::LimiterError, utils::make_redis_key};
 
@@ -22,6 +28,33 @@ impl RateLimiterHeaders {
     }
 }
 
+lazy_static! {
+    static ref SCRIPTS: HashMap<String, Script> = {
+        let mut scripts = HashMap::new();
+        scripts.insert(
+            RateLimiterAlgorithms::FixedWindow.to_string(),
+            Script::new(RateLimiterAlgorithms::FixedWindow.get_script()),
+        );
+        scripts.insert(
+            RateLimiterAlgorithms::SlidingWindowCounter.to_string(),
+            Script::new(RateLimiterAlgorithms::SlidingWindowCounter.get_script()),
+        );
+        scripts.insert(
+            RateLimiterAlgorithms::SlidingWindowLog.to_string(),
+            Script::new(RateLimiterAlgorithms::SlidingWindowLog.get_script()),
+        );
+        scripts.insert(
+            RateLimiterAlgorithms::TokenBucket.to_string(),
+            Script::new(RateLimiterAlgorithms::TokenBucket.get_script()),
+        );
+        scripts.insert(
+            RateLimiterAlgorithms::LeakyBucket.to_string(),
+            Script::new(RateLimiterAlgorithms::LeakyBucket.get_script()),
+        );
+        scripts
+    };
+}
+
 pub async fn execute_rate_limiting(
     mut pool: ConnectionManager,
     tracked_key: &str,
@@ -35,7 +68,7 @@ pub async fn execute_rate_limiting(
         "Executing rate limiting with key {tracked_key}, algorithm {algorithm:?}, limit {limit}, expiration {expiration} and rule_redis_config_key {rule_redis_config_key}"
     );
     let redis_key = make_redis_key(tracked_key, rule_redis_config_key, &algorithm);
-    let script = redis::Script::new(algorithm.get_script());
+    let script = SCRIPTS.get(&algorithm.to_string()).unwrap();
 
     let result: Vec<u64> = script
         .key(redis_key)
