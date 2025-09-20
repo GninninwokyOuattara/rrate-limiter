@@ -151,6 +151,7 @@ async fn limiter_handler(
             limiter_rule.algorithm,
             limiter_rule.limit as u64,
             limiter_rule.expiration as u64,
+            request.uri().path().to_string(),
         )
         .await?;
 

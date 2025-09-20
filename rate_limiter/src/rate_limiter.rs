@@ -1,5 +1,5 @@
 use redis::aio::ConnectionManager;
-use rrl_core::RateLimiterAlgorithms;
+use rrl_core::{RateLimiterAlgorithms, tracing};
 
 use crate::{errors::LimiterError, utils::make_redis_key};
 
@@ -29,7 +29,11 @@ pub async fn execute_rate_limiting(
     algorithm: RateLimiterAlgorithms,
     limit: u64,
     expiration: u64,
+    route: String,
 ) -> Result<RateLimiterHeaders, LimiterError> {
+    tracing::debug!(
+        "Executing rate limiting with key {tracked_key}, algorithm {algorithm:?}, limit {limit}, expiration {expiration} and rule_redis_config_key {rule_redis_config_key}"
+    );
     let redis_key = make_redis_key(tracked_key, rule_redis_config_key, &algorithm);
     let script = redis::Script::new(algorithm.get_script());
 
@@ -38,13 +42,18 @@ pub async fn execute_rate_limiting(
         .arg(limit)
         .arg(expiration)
         .invoke_async(&mut pool)
-        .await
-        .unwrap();
+        .await?;
 
     let headers = RateLimiterHeaders::new(result[0], result[1], result[2], algorithm.to_string());
+    tracing::debug!("Resulting headers after rate limiting: {:#?}", headers);
 
     if result[3] == 0 {
-        return Err(LimiterError::RateLimitExceeded(headers));
+        return Err(LimiterError::RateLimitExceeded {
+            headers,
+            key: tracked_key.to_string(),
+            msg: "Rate limit exceeded".to_string(),
+            route,
+        });
     }
 
     Ok(headers)

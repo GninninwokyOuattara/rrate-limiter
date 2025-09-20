@@ -24,9 +24,13 @@ pub enum LimiterError {
     )]
     NoIpFound,
 
-    #[error("Rate limit exceeded")]
-    RateLimitExceeded(RateLimiterHeaders),
-
+    #[error("Rate limit exceeded for {key} on route {route}")]
+    RateLimitExceeded {
+        headers: RateLimiterHeaders,
+        key: String,
+        msg: String,
+        route: String,
+    },
     #[error("Internal Server Error")]
     RedisError(#[from] RedisError),
 
@@ -36,7 +40,7 @@ pub enum LimiterError {
 
 impl LimiterError {
     pub fn into_hyper_response(self) -> Response<Full<Bytes>> {
-        tracing::warn!("Error : {:#?}", &self);
+        tracing::debug!("Limiter Error : {:#?}", &self,);
         match self {
             LimiterError::NoRouteMatch(msg) => Response::builder()
                 .status(StatusCode::BAD_REQUEST)
@@ -50,14 +54,21 @@ impl LimiterError {
                 .status(StatusCode::BAD_REQUEST)
                 .body(Full::new(Bytes::from(LimiterError::NoIpFound.to_string())))
                 .unwrap(),
-            LimiterError::RateLimitExceeded(headers) => Response::builder()
-                .status(StatusCode::TOO_MANY_REQUESTS)
-                .header("limit", headers.limit)
-                .header("remaining", headers.remaining)
-                .header("reset", headers.reset)
-                .header("policy", headers.policy)
-                .body(Full::new(Bytes::from("Rate limit exceeded!")))
-                .unwrap(),
+            LimiterError::RateLimitExceeded {
+                headers,
+                key: _,
+                msg: _,
+                route: _,
+            } => {
+                return Response::builder()
+                    .status(StatusCode::TOO_MANY_REQUESTS)
+                    .header("limit", headers.limit)
+                    .header("remaining", headers.remaining)
+                    .header("reset", headers.reset)
+                    .header("policy", headers.policy)
+                    .body(Full::new(Bytes::from("Rate limit exceeded!")))
+                    .unwrap();
+            }
             LimiterError::RedisError(_) => Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Full::new(Bytes::from("Internal Server Error")))
