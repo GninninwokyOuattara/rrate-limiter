@@ -41,14 +41,14 @@ pub enum LimiterError {
 impl LimiterError {
     pub fn into_hyper_response(self) -> Response<Full<Bytes>> {
         tracing::debug!("Limiter Error : {:#?}", &self,);
-        match self {
-            LimiterError::NoRouteMatch(msg) => Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(Full::new(Bytes::from(msg)))
+        match &self {
+            LimiterError::NoRouteMatch(_msg) => Response::builder()
+                .status(StatusCode::OK)
+                .body(Full::new(Bytes::from(self.to_string())))
                 .unwrap(),
-            LimiterError::TrackedKeyNotFound(msg) => Response::builder()
+            LimiterError::TrackedKeyNotFound(_msg) => Response::builder()
                 .status(StatusCode::BAD_REQUEST)
-                .body(Full::new(Bytes::from(msg)))
+                .body(Full::new(Bytes::from(self.to_string())))
                 .unwrap(),
             LimiterError::NoIpFound => Response::builder()
                 .status(StatusCode::BAD_REQUEST)
@@ -64,7 +64,7 @@ impl LimiterError {
                 .header("limit", headers.limit)
                 .header("remaining", headers.remaining)
                 .header("reset", headers.reset)
-                .header("policy", headers.policy)
+                .header("policy", headers.policy.clone())
                 .body(Full::new(Bytes::from("Rate limit exceeded!")))
                 .unwrap(),
             LimiterError::RedisError(_) => Response::builder()
