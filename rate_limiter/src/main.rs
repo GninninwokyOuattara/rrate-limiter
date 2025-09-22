@@ -94,15 +94,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let (stream, _) = listener.accept().await?;
         let io = TokioIo::new(stream);
-        let states_in_loop = states.clone();
+        let states = states.clone();
 
         tokio::spawn(async move {
             let _ = http1::Builder::new()
                 .serve_connection(
                     io,
                     service_fn(move |req| {
-                        let cloned_states_for_limiter = states_in_loop.clone();
-                        limiter_handler(cloned_states_for_limiter, req)
+                        let states = states.clone();
+                        limiter_handler(states, req)
                     }),
                 )
                 .await;
