@@ -25,7 +25,7 @@ It addresses the common problem in system design aka 'design a rate limiter' but
 ## Manual Installation
 
 1. Clone the repository
-```git clone https://github.com/eddycharly/rate_limiter.git```
+```git clone https://github.com/GninninwokyOuattara/rrate-limiter.git```
 
 2. Build the rate limiter server
 ```cd rate_limiter && cargo build --release```
@@ -60,7 +60,12 @@ The configuration file is a list of rules that should be applied to each route o
 - `route`: The route or endpoint that should be rate limited. it support dynamic route segments. eg `/api/v1/{id}`
 - `limit`: The maximum number of requests that can be made within the specified time window. `Required``
 - `expiration`: The time window in seconds. `Required`
-- `algorithm`: The algorithm to use. `fw`, `swl`, `swc`, `lb` or `tb`. `Required`
+- `algorithm`: The algorithm to use. `Required`
+    - `fw` : Fixed Window, 
+    - `swl` : Sliding Window Log, 
+    - `swc` : Sliding Window Counter, 
+    - `lb` : Leaky Bucket, 
+    - `tb` : Token Bucket. 
 - `tracking_type`: The type of tracking to use. `ip` or `header`. `Required`
 - `custom_tracking_key`: The custom tracking key to use. `Required when tracking type is header`
 - `active`: Whether the rule is active or not. Default to true. `Optional`
