@@ -2,14 +2,18 @@ use anyhow::{Context, anyhow};
 use hyper::HeaderMap;
 use matchit::Router;
 use matchit::Router as MatchitRouter;
-use rrl_core::{
-    LimiterTrackingType, MinimalRule, RateLimiterAlgorithms, Rule,
-    redis::{self, AsyncCommands, Commands, JsonAsyncCommands, RedisError, aio::ConnectionManager},
-    serde_json, tracing,
+use redis::{
+    AsyncCommands, Commands, JsonAsyncCommands, RedisError, Script, aio::ConnectionManager,
 };
+use serde_json::json;
+
 use std::collections::HashMap;
 
-use crate::errors::{self, LimiterError};
+use crate::{
+    errors::{self, LimiterError},
+    rate_limiter::{LimiterTrackingType, RateLimiterAlgorithms},
+    rules::{MinimalRule, Rule},
+};
 
 pub fn make_redis_key(
     key_tracked: &str,
@@ -90,7 +94,7 @@ const STANDARD_IP_HEADERS: [&str; 3] = ["x-forwarded-for", "x-real-ip", "forward
 pub fn get_tracked_key_from_header(
     headers: &HeaderMap,
     tracking_type: &LimiterTrackingType,
-    custom_header_key: Option<String>,
+    custom_header_key: Option<&str>,
 ) -> Result<String, errors::LimiterError> {
     match tracking_type {
         LimiterTrackingType::IP => {
@@ -104,10 +108,12 @@ pub fn get_tracked_key_from_header(
         }
         LimiterTrackingType::Header => {
             let custom_key = custom_header_key.context("Custom header should not be null")?;
-            if let Some(key) = headers.get(&custom_key) {
+            if let Some(key) = headers.get(custom_key) {
                 Ok(key.to_str().unwrap().to_string())
             } else {
-                Err(errors::LimiterError::TrackedKeyNotFound(custom_key))
+                Err(errors::LimiterError::TrackedKeyNotFound(
+                    custom_key.to_string(),
+                ))
             }
         }
     }
@@ -165,4 +171,40 @@ pub async fn get_rules_information_by_redis_json_key(
             key
         )))?
         .clone())
+}
+
+pub fn make_rules_configuration_script(rules: Vec<Rule>) -> Script {
+    // Empty or initialize the rules hash
+    let check_initialization = r"
+        redis.call('JSON.SET', 'rules', '$', '{}')
+
+    ";
+
+    // Build the rules, redis call after redis call
+    let mut script_rules: Vec<String> = vec![];
+    script_rules.push(check_initialization.to_string());
+
+    rules.into_iter().for_each(|rule| {
+        let id = rule.id.clone().to_string();
+        let rule_json = json!(
+            {
+                "id": rule.id,
+                "route": rule.route,
+                "algorithm": rule.algorithm.to_string(),
+                "tracking_type": rule.tracking_type.to_string(),
+                "limit": rule.limit,
+                "expiration": rule.expiration,
+                "custom_tracking_key": rule.custom_tracking_key.unwrap_or("".to_string()),
+                "active": rule.active.unwrap_or(true).to_string()
+            }
+        );
+
+        let script = format!(r#"redis.call('JSON.SET', 'rules', '$.{id}' , '{rule_json}')"#);
+        script_rules.push(script);
+    });
+
+    // Finilize the script by publishing the update
+    let publish = "redis.call('PUBLISH', 'rl_update', 'update')".to_string();
+    let script_rules = script_rules.join("\n");
+    Script::new(&format!("{}\n{}", script_rules, publish))
 }

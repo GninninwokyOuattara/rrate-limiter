@@ -1,15 +1,12 @@
 use anyhow::Context;
-use rrl_core::{
-    LimiterTrackingType, RateLimiterAlgorithms, Rule, get_rules_route_and_id,
-    redis::{self, Script},
-    serde_json::json,
-    tokio, tracing,
-    tracing_subscriber::{self, layer::SubscriberExt, util::SubscriberInitExt},
-};
 use serde::Deserialize;
-use std::{
-    env,
-    path::{Path, PathBuf},
+
+use std::path::Path;
+
+use crate::{
+    rate_limiter::{LimiterTrackingType, RateLimiterAlgorithms},
+    rules::{Rule, get_rules_route_and_id},
+    utils::make_rules_configuration_script,
 };
 
 #[derive(Deserialize, Debug)]
@@ -23,62 +20,12 @@ struct Configuration {
     pub active: Option<bool>,
 }
 
-fn make_redis_script(rules: Vec<Rule>) -> Script {
-    // Empty or initialize the rules hash
-    let check_initialization = r"
-        redis.call('JSON.SET', 'rules', '$', '{}')
-
-    ";
-
-    // Build the rules, redis call after redis call
-    let mut script_rules: Vec<String> = vec![];
-    script_rules.push(check_initialization.to_string());
-
-    rules.into_iter().for_each(|rule| {
-        let id = rule.id.clone().to_string();
-        let rule_json = json!(
-            {
-                "id": rule.id,
-                "route": rule.route,
-                "algorithm": rule.algorithm.to_string(),
-                "tracking_type": rule.tracking_type.to_string(),
-                "limit": rule.limit,
-                "expiration": rule.expiration,
-                "custom_tracking_key": rule.custom_tracking_key.unwrap_or("".to_string()),
-                "active": rule.active.unwrap_or(true).to_string()
-            }
-        );
-
-        let script = format!(r#"redis.call('JSON.SET', 'rules', '$.{id}' , '{rule_json}')"#);
-        script_rules.push(script);
-    });
-
-    // Finilize the script by publishing the update
-    let publish = "redis.call('PUBLISH', 'rl_update', 'update')".to_string();
-    let script_rules = script_rules.join("\n");
-    Script::new(&format!("{}\n{}", script_rules, publish))
-}
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+pub async fn load_configuration(config_file: &Path) -> anyhow::Result<()> {
     let start_time = std::time::Instant::now();
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
 
     tracing::debug!("Reading environment variables...");
     let redis_host = std::env::var("RL_REDIS_HOST").unwrap_or("localhost".to_string());
     let redis_port = std::env::var("RL_REDIS_PORT").unwrap_or("6379".to_string());
-    let config_file =
-        PathBuf::from(std::env::var("RL_CONFIG_FILE_PATH").unwrap_or("./config.yaml".to_string()));
-
-    if !config_file.exists() {
-        panic!("Configuration file does not exist.");
-    }
 
     let file_extension = config_file.extension().unwrap_or_default();
     if file_extension != "yaml" && file_extension != "yml" {
@@ -141,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Processed {} rules.", rules.len());
     tracing::info!("Creating redis script...");
-    let generated_script = make_redis_script(rules);
+    let generated_script = make_rules_configuration_script(rules);
     tracing::debug!("Script :: {:#?}", generated_script);
 
     tracing::info!("Publishing script to redis store...");

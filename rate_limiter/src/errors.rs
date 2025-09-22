@@ -5,8 +5,7 @@ use anyhow::anyhow;
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::{Response, StatusCode};
-use rrl_core::redis::RedisError;
-use rrl_core::tracing;
+use redis::RedisError;
 use thiserror::Error;
 
 use crate::rate_limiter::RateLimiterHeaders;

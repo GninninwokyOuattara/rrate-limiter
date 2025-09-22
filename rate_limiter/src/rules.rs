@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize, de};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::{LimiterTrackingType, RateLimiterAlgorithms};
+use crate::rate_limiter::{LimiterTrackingType, RateLimiterAlgorithms};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Rule {
