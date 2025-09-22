@@ -37,6 +37,7 @@ struct States {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let redis_host = std::env::var("RL_REDIS_HOST").unwrap_or("localhost".to_string());
     let redis_port = std::env::var("RL_REDIS_PORT").unwrap_or("6379".to_string());
+    // TODO: password for redis
 
     tracing_subscriber::registry()
         .with(
@@ -54,7 +55,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let config = redis::aio::ConnectionManagerConfig::new()
         .set_push_sender(tx)
+        .set_connection_timeout(std::time::Duration::from_secs(2))
+        .set_number_of_retries(1)
         .set_automatic_resubscription();
+
     let mut redis_connection = client.get_connection_manager_with_config(config).await?;
     let mut con_for_task = redis_connection.clone();
     tracing::info!("Managed connection to redis established.");
