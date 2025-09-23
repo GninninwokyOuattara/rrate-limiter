@@ -32,7 +32,7 @@ enum Commands {
     Run,
     /// Load configuration file into the redis instance used by the rate limiters.
     Load {
-        /// lists test values
+        /// Path to the configuration file to be loaded
         #[arg(short, long)]
         file: PathBuf,
     },
