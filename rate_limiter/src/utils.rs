@@ -2,7 +2,10 @@ use anyhow::{Context, anyhow};
 use hyper::HeaderMap;
 use matchit::Router;
 use matchit::Router as MatchitRouter;
-use redis::{AsyncCommands, Commands, JsonAsyncCommands, RedisError, aio::ConnectionManager};
+use redis::{
+    AsyncCommands, Commands, JsonAsyncCommands, RedisError, Script, aio::ConnectionManager,
+};
+use serde_json::json;
 
 use std::collections::HashMap;
 
@@ -166,4 +169,40 @@ pub async fn get_rules_information_by_redis_json_key(
             key
         )))?
         .clone())
+}
+
+pub fn make_rules_configuration_script(rules: Vec<Rule>) -> Script {
+    // Empty or initialize the rules hash
+    let check_initialization = r"
+        redis.call('JSON.SET', 'rules', '$', '{}')
+
+    ";
+
+    // Build the rules, redis call after redis call
+    let mut script_rules: Vec<String> = vec![];
+    script_rules.push(check_initialization.to_string());
+
+    rules.into_iter().for_each(|rule| {
+        let id = rule.id.clone().to_string();
+        let rule_json = json!(
+            {
+                "id": rule.id,
+                "route": rule.route,
+                "algorithm": rule.algorithm.to_string(),
+                "tracking_type": rule.tracking_type.to_string(),
+                "limit": rule.limit,
+                "expiration": rule.expiration,
+                "custom_tracking_key": rule.custom_tracking_key.unwrap_or("".to_string()),
+                "active": rule.active.unwrap_or(true).to_string()
+            }
+        );
+
+        let script = format!(r#"redis.call('JSON.SET', 'rules', '$.{id}' , '{rule_json}')"#);
+        script_rules.push(script);
+    });
+
+    // Finilize the script by publishing the update
+    let publish = "redis.call('PUBLISH', 'rl_update', 'update')".to_string();
+    let script_rules = script_rules.join("\n");
+    Script::new(&format!("{}\n{}", script_rules, publish))
 }

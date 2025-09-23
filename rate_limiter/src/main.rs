@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
-use crate::server::run;
+use crate::{configurations_loader::load_configuration, server::run};
 use clap::{Parser, Subcommand};
 use tokio;
 
+mod configurations_loader;
 mod errors;
 mod handler;
 mod rate_limiter;
@@ -42,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match &cli.command {
         Commands::Run => run().await?,
-        Commands::Load { file } => {}
+        Commands::Load { file } => load_configuration(file).await?,
     }
 
     // run().await
