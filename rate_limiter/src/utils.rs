@@ -2,14 +2,15 @@ use anyhow::{Context, anyhow};
 use hyper::HeaderMap;
 use matchit::Router;
 use matchit::Router as MatchitRouter;
-use rrl_core::{
-    LimiterTrackingType, MinimalRule, RateLimiterAlgorithms, Rule,
-    redis::{self, AsyncCommands, Commands, JsonAsyncCommands, RedisError, aio::ConnectionManager},
-    serde_json, tracing,
-};
+use redis::{AsyncCommands, Commands, JsonAsyncCommands, RedisError, aio::ConnectionManager};
+
 use std::collections::HashMap;
 
-use crate::errors::{self, LimiterError};
+use crate::{
+    errors::{self, LimiterError},
+    rate_limiter::{LimiterTrackingType, RateLimiterAlgorithms},
+    rules::{MinimalRule, Rule},
+};
 
 pub fn make_redis_key(
     key_tracked: &str,

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use parking_lot::RwLock;
-use rrl_core::redis::aio::ConnectionManager;
+use redis::aio::ConnectionManager;
 
 pub struct States {
     pub route_matcher: Arc<RwLock<matchit::Router<String>>>,

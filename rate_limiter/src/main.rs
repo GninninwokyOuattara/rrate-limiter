@@ -2,11 +2,12 @@ use std::path::PathBuf;
 
 use crate::server::run;
 use clap::{Parser, Subcommand};
-use rrl_core::tokio;
+use tokio;
 
 mod errors;
 mod handler;
 mod rate_limiter;
+mod rules;
 mod server;
 mod server_state;
 mod utils;

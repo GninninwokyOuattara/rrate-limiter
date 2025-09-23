@@ -1,11 +1,8 @@
 use hyper_util::rt::TokioIo;
 use parking_lot::RwLock;
-use rrl_core::{
-    redis::{self},
-    tokio::{self, net::TcpListener},
-    tracing,
-    tracing_subscriber::{self, layer::SubscriberExt, util::SubscriberInitExt},
-};
+use tokio::net::TcpListener;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
 use std::sync::Arc;
 
 use crate::{
