@@ -378,15 +378,15 @@ pub async fn execute_rate_limiting(
     mut pool: ConnectionManager,
     tracked_key: &str,
     rule_redis_config_key: &str,
-    algorithm: RateLimiterAlgorithms,
+    algorithm: &RateLimiterAlgorithms,
     limit: u64,
     expiration: u64,
-    route: String,
+    route: &str,
 ) -> Result<RateLimiterHeaders, LimiterError> {
     tracing::debug!(
         "Executing rate limiting with key {tracked_key}, algorithm {algorithm:?}, limit {limit}, expiration {expiration} and rule_redis_config_key {rule_redis_config_key}"
     );
-    let redis_key = make_redis_key(tracked_key, rule_redis_config_key, &algorithm);
+    let redis_key = make_redis_key(tracked_key, rule_redis_config_key, algorithm);
     let script = SCRIPTS.get(&algorithm.to_string()).unwrap();
 
     let result: Vec<u64> = script
@@ -404,7 +404,7 @@ pub async fn execute_rate_limiting(
             headers,
             key: tracked_key.to_string(),
             msg: "Rate limit exceeded".to_string(),
-            route,
+            route: route.to_string(),
         });
     }
 
