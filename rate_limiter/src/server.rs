@@ -1,32 +1,19 @@
-use hyper_util::rt::TokioIo;
-use parking_lot::RwLock;
-use tokio::net::TcpListener;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-use std::sync::Arc;
-
 use crate::{
     handler::limiter_handler,
     server_state::States,
     utils::{get_rules_from_redis, instantiate_matcher_with_rules},
 };
-
-use std::net::SocketAddr;
-
 use hyper::{server::conn::http1, service::service_fn};
+use hyper_util::rt::TokioIo;
+use parking_lot::RwLock;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::net::TcpListener;
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let redis_host = std::env::var("RL_REDIS_HOST").unwrap_or("localhost".to_string());
     let redis_port = std::env::var("RL_REDIS_PORT").unwrap_or("6379".to_string());
     // TODO: password for redis
-
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
 
     tracing::info!("connecting to redis...");
     let client = redis::Client::open(format!(

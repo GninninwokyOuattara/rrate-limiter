@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use crate::{configurations_loader::load_configuration, server::run};
 use clap::{Parser, Subcommand};
 use tokio;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod configurations_loader;
 mod errors;
@@ -41,11 +42,18 @@ enum Commands {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     match &cli.command {
         Commands::Run => run().await?,
         Commands::Load { file } => load_configuration(file).await?,
     }
 
-    // run().await
     Ok(())
 }

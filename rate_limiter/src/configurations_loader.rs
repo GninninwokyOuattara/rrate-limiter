@@ -1,8 +1,7 @@
 use anyhow::Context;
 use serde::Deserialize;
 
-use std::{env, path::Path};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use std::path::Path;
 
 use crate::{
     rate_limiter::{LimiterTrackingType, RateLimiterAlgorithms},
@@ -23,13 +22,6 @@ struct Configuration {
 
 pub async fn load_configuration(config_file: &Path) -> anyhow::Result<()> {
     let start_time = std::time::Instant::now();
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
 
     tracing::debug!("Reading environment variables...");
     let redis_host = std::env::var("RL_REDIS_HOST").unwrap_or("localhost".to_string());
