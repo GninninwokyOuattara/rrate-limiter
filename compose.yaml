@@ -1,9 +1,10 @@
 services:
   rate_limiter:
-    restart: "always"
-    image: rrl/rate_limiter:latest
+    restart: "unless-stopped"
+    image: rate_limiter:latest
     build:
-      dockerfile: rate_limiter.Dockerfile
+      context: ./rate_limiter
+      dockerfile: Dockerfile
     ports:
       - 3000:3000
     depends_on:
@@ -12,33 +13,24 @@ services:
       - RL_REDIS_HOST=redis
       - RL_REDIS_PORT=6379
       - RUST_LOG=info
-    
-    deploy:
-      replicas: 1
-      # resources:
-      #   limits:
-      #     cpus: '0.10'
-      #     memory: 50M
-      #   reservations:
-      #     cpus: '0.10'
-      #     memory: 20M
-          
+    command: ["./rate_limiter", "run"]
 
-
-  config_loader:
-    # restart: "always"
-    image: rrl/config_loader:latest
+  rate_limiter_as_config_loader:
+    image: rate_limiter:latest
     build:
-      dockerfile: config_loader.Dockerfile
-    container_name: config_loader
+      context: ./rate_limiter
+      dockerfile: Dockerfile
     depends_on:
       - redis
     environment:
       - RL_REDIS_HOST=redis
       - RL_REDIS_PORT=6379
-      - RL_CONFIG_FILE_PATH=/config.yaml
+      - RUST_LOG=debug
+    command: ["rate_limiter", "load", "--file", "/rules.yaml"]
     volumes:
-      - ./config_loader/config.yaml:/config.yaml
+      - ./rules.example.yaml:/rules.yaml
+    
+          
 
   redis:
     restart: always
