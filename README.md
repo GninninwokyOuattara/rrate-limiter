@@ -40,13 +40,13 @@ It addresses the common problem in system design aka 'design a rate limiter' but
 
 The configuration file is a list of rules that should be applied to each route or endpoint. It should look like this:
 ```yaml
-- route: "/" -- The route or endpoint that should be rate limited
-    limit: 1 -- The maximum number of requests that can be made 
-    expiration: 30 -- The time window in seconds
-    algorithm: "fw" -- The algorithm to use (fw, swl, swc, lb, tb)
-    tracking_type: "ip" -- The type of tracking to use (ip, header)
-    custom_tracking_key: "" -- key required when tracking type is header
-    active: true -- Whether the rule is active or not
+- route: "/" # The route or endpoint that should be rate limited
+    limit: 1 # The maximum number of requests that can be made 
+    expiration: 30 # The time window in seconds
+    algorithm: "fw" # The algorithm to use (fw, swl, swc, lb, tb)
+    tracking_type: "ip" # The type of tracking to use (ip, header)
+    custom_tracking_key: "" # key required when tracking type is header
+    active: true # Whether the rule is active or not
 ```
 
 Dynamic `route` can be specified too. `- route : "api/v1/orders/{id}`. 
