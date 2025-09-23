@@ -94,7 +94,7 @@ const STANDARD_IP_HEADERS: [&str; 3] = ["x-forwarded-for", "x-real-ip", "forward
 pub fn get_tracked_key_from_header(
     headers: &HeaderMap,
     tracking_type: &LimiterTrackingType,
-    custom_header_key: Option<String>,
+    custom_header_key: Option<&str>,
 ) -> Result<String, errors::LimiterError> {
     match tracking_type {
         LimiterTrackingType::IP => {
@@ -108,10 +108,12 @@ pub fn get_tracked_key_from_header(
         }
         LimiterTrackingType::Header => {
             let custom_key = custom_header_key.context("Custom header should not be null")?;
-            if let Some(key) = headers.get(&custom_key) {
+            if let Some(key) = headers.get(custom_key) {
                 Ok(key.to_str().unwrap().to_string())
             } else {
-                Err(errors::LimiterError::TrackedKeyNotFound(custom_key))
+                Err(errors::LimiterError::TrackedKeyNotFound(
+                    custom_key.to_string(),
+                ))
             }
         }
     }
