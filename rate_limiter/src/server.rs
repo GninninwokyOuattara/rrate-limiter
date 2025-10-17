@@ -5,6 +5,7 @@ use crate::{
 };
 use hyper::{server::conn::http1, service::service_fn};
 use hyper_util::rt::TokioIo;
+use opentelemetry::global;
 use parking_lot::RwLock;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -14,6 +15,22 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let redis_host = std::env::var("RL_REDIS_HOST").unwrap_or("localhost".to_string());
     let redis_port = std::env::var("RL_REDIS_PORT").unwrap_or("6379".to_string());
     // TODO: password for redis
+    let meter = global::meter("my-meter");
+    let rl_total_requests = meter
+        .u64_counter("rl_handled_requests")
+        .with_description("Total number of requests handled")
+        .with_unit("requests")
+        .build();
+    let rl_allowed_requests = meter
+        .u64_counter("rl_allowed_requests")
+        .with_description("Total number of requests allowed")
+        .with_unit("requests")
+        .build();
+    let rl_rejected_requests = meter
+        .u64_counter("rl_rejected_requests")
+        .with_description("Total number of requests rejected")
+        .with_unit("requests")
+        .build();
 
     tracing::info!("connecting to redis...");
     let client = redis::Client::open(format!(
@@ -35,7 +52,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         "Subscribed to rl_update channel. Updates will trigger a rebuild of the matcher."
     );
 
-    let rules_config = get_rules_from_redis(&mut redis_connection).await.unwrap();
+    let rules_config = get_rules_from_redis(&mut redis_connection)
+        .await
+        .unwrap_or_default();
     let route_matcher = Arc::new(RwLock::new(instantiate_matcher_with_rules(rules_config))); // Initial instance of the matcher.
 
     {
@@ -43,7 +62,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
                 tracing::info!("Event received: {msg:?}");
-                let new_rules = get_rules_from_redis(&mut con_for_task).await.unwrap();
+                let new_rules = get_rules_from_redis(&mut con_for_task)
+                    .await
+                    .unwrap_or_default();
                 let length = new_rules.len();
                 let new_router = instantiate_matcher_with_rules(new_rules);
                 *route_matcher.write() = new_router;
@@ -55,6 +76,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let states = Arc::new(States {
         route_matcher: route_matcher.clone(),
         pool: redis_connection,
+        rl_total_requests,
+        rl_allowed_requests,
+        rl_rejected_requests,
     });
 
     tracing::info!("Starting server on port 3000");

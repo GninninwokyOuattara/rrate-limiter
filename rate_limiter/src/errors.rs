@@ -5,6 +5,7 @@ use anyhow::anyhow;
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::{Response, StatusCode};
+use opentelemetry::{KeyValue, metrics::Counter};
 use redis::RedisError;
 use thiserror::Error;
 
@@ -75,6 +76,25 @@ impl LimiterError {
                 .body(Full::new(Bytes::from("Internal Server Error")))
                 .unwrap(),
         }
+    }
+
+    pub fn emit_metric(&self, counter: Counter<u64>, key_values: &mut Vec<KeyValue>) {
+        let http = match &self {
+            LimiterError::NoRouteMatch(_) => KeyValue::new("http", "404"),
+            LimiterError::TrackedKeyNotFound(_) => KeyValue::new("http", "400"),
+            LimiterError::NoIpFound => KeyValue::new("http", "400"),
+            LimiterError::RateLimitExceeded {
+                headers: _,
+                key: _,
+                msg: _,
+                route: _,
+            } => KeyValue::new("http", "429"),
+            LimiterError::RedisError(_) => KeyValue::new("http", "500"),
+            LimiterError::Unknown(_) => KeyValue::new("http", "500"),
+        };
+
+        key_values.push(http);
+        counter.add(1, key_values);
     }
 }
 

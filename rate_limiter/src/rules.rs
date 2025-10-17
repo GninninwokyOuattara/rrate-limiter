@@ -1,3 +1,4 @@
+use opentelemetry::KeyValue;
 use redis::Connection;
 use serde::{Deserialize, Serialize, de};
 use std::collections::HashMap;
@@ -73,13 +74,18 @@ pub fn get_rules_route_and_id(
     connection: &mut Connection,
 ) -> Result<HashMap<String, String>, Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Get all fields and values from redis.
-    let response: String = redis::cmd("JSON.GET")
+    let maybe_response: Option<String> = redis::cmd("JSON.GET")
         .arg("rules")
         .arg("$..route")
         .arg("$..id")
         .query(connection)?;
 
-    println!("Response: {:?}", &response);
+    tracing::debug!("Response from redis: {:?}", &maybe_response);
+
+    let Some(response) = maybe_response else {
+        return Ok(HashMap::default());
+    };
+
     tracing::debug!("rules and id query response :: {:#?}", &response);
 
     let rules: HashMap<String, Vec<String>> =
@@ -99,10 +105,27 @@ pub fn get_rules_route_and_id(
             .get(&"$..id".to_string())
             .expect("Failed to get id key")
             .get(i)
-            .expect(format!("Failed to get id key at index {}", i).as_str());
+            .unwrap_or_else(|| panic!("Failed to get id key at index {}", i));
         route_to_id.insert(route.clone(), id.clone());
     }
     tracing::debug!("route_to_id: {:#?}", route_to_id);
 
     Ok(route_to_id)
+}
+
+impl From<Rule> for Vec<KeyValue> {
+    fn from(value: Rule) -> Self {
+        vec![
+            KeyValue::new("id", value.id),
+            KeyValue::new("name", value.route),
+            KeyValue::new("algorithm", value.algorithm.to_string()),
+            KeyValue::new("limit", value.limit as i64),
+            KeyValue::new("expiration", value.expiration as i64),
+            KeyValue::new("tracking_type", value.tracking_type.to_string()),
+            KeyValue::new(
+                "custom_tracking_key",
+                value.custom_tracking_key.unwrap_or_default(),
+            ),
+        ]
+    }
 }

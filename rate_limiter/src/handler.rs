@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use bytes::Bytes;
+use opentelemetry::KeyValue;
 use std::sync::Arc;
 
 use crate::{
@@ -17,6 +18,7 @@ pub async fn limiter_handler(
     request: Request<hyper::body::Incoming>,
 ) -> anyhow::Result<Response<Full<Bytes>>, LimiterError> {
     let path = request.uri().path();
+    let mut metrics_properties = vec![];
     let res = async {
         // Retrieve the key associated with this route using the matcher.
         // That key will be used to index the rule information inside the from the cache.
@@ -34,15 +36,17 @@ pub async fn limiter_handler(
             get_rules_information_by_redis_json_key(&mut states.pool.clone(), &associated_key)
                 .await?;
 
+        metrics_properties = limiter_rule.clone().into();
+
         // In case the rule is disabled (active=false)
         if let Some(v) = &limiter_rule.active
             && !(*v)
         {
             let response = Response::builder()
                 .body(Full::new(Bytes::from("Rate limit not exceeded.")))
-                .map_err(|_err| LimiterError::Unknown(anyhow!("Unable to build response")));
+                .map_err(|_err| LimiterError::Unknown(anyhow!("Unable to build response")))?;
 
-            return response;
+            return Ok(response);
         }
 
         let tracking_key = get_tracked_key_from_header(
@@ -69,11 +73,22 @@ pub async fn limiter_handler(
             .header("policy", headers.policy)
             .body(Full::new(Bytes::from("Rate limit not exceeded")))
             .map_err(|_err| LimiterError::Unknown(anyhow!("Unable to build response")));
+
+        metrics_properties.push(KeyValue::new("http", "200"));
+
         response
     };
 
     return match res.await {
-        Ok(res) => Ok(res),
-        Err(err) => Ok(err.into_hyper_response()),
+        Ok(res) => {
+            states.rl_total_requests.add(1, &metrics_properties);
+            states.rl_allowed_requests.add(1, &metrics_properties);
+            Ok(res)
+        }
+        Err(err) => {
+            states.rl_total_requests.add(1, &metrics_properties);
+            err.emit_metric(states.rl_rejected_requests.clone(), &mut metrics_properties);
+            Ok(err.into_hyper_response())
+        }
     };
 }

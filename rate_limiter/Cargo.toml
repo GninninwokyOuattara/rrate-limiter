@@ -23,6 +23,11 @@ redis = {version = "0.32.5", features = ["connection-manager", "tokio-comp", "js
 serde_json = "1.0.145"
 tokio = { version = "1.47.1", features = ["full"] }
 serde_yaml = "0.9.34"
+opentelemetry = "0.31.0"
+opentelemetry_sdk = {version="0.31.0", features = ["rt-tokio"]}
+opentelemetry-otlp = {version="0.31.0", features = ["metrics", "trace"]}
+opentelemetry-stdout = "0.31.0"
+opentelemetry-appender-tracing = "0.31.1"
 
 [profile.release]
 lto = true
