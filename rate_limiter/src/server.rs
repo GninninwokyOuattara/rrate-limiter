@@ -37,17 +37,20 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let rules_config = get_rules_from_redis(&mut redis_connection).await.unwrap();
     let route_matcher = Arc::new(RwLock::new(instantiate_matcher_with_rules(rules_config))); // Initial instance of the matcher.
-    let route_matcher_for_task = Arc::clone(&route_matcher);
-    tokio::spawn(async move {
-        while let Some(msg) = rx.recv().await {
-            tracing::info!("Event received: {msg:?}");
-            let new_rules = get_rules_from_redis(&mut con_for_task).await.unwrap();
-            let length = new_rules.len();
-            let new_router = instantiate_matcher_with_rules(new_rules);
-            *route_matcher_for_task.write() = new_router;
-            tracing::info!("Matcher has been rebuilt with {length} routes.");
-        }
-    });
+
+    {
+        let route_matcher = route_matcher.clone();
+        tokio::spawn(async move {
+            while let Some(msg) = rx.recv().await {
+                tracing::info!("Event received: {msg:?}");
+                let new_rules = get_rules_from_redis(&mut con_for_task).await.unwrap();
+                let length = new_rules.len();
+                let new_router = instantiate_matcher_with_rules(new_rules);
+                *route_matcher.write() = new_router;
+                tracing::info!("Matcher has been rebuilt with {length} routes.");
+            }
+        });
+    }
 
     let states = Arc::new(States {
         route_matcher: route_matcher.clone(),
