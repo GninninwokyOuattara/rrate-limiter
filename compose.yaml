@@ -12,6 +12,7 @@ services:
     environment:
       - RL_REDIS_HOST=redis
       - RL_REDIS_PORT=6379
+      - RL_OTLP_HOST=http://telemetry:4318
       - RUST_LOG=info
     command: ["./rate_limiter", "run"]
 
@@ -54,7 +55,48 @@ services:
     environment:
       - NGINX_PORT=80
 
+  telemetry:
+    image: otel/opentelemetry-collector-contrib
+    container_name: telemetry
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./telemetry/otel-config.yaml:/etc/otel-collector-config.yaml
+    command: ["--config=/etc/otel-collector-config.yaml"]
+
+  prometheus:
+    privileged: true
+    container_name: prometheus
+    restart: unless-stopped
+    image: prom/prometheus:v3.2.1
+    command:
+      - --web.enable-otlp-receiver
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./telemetry/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    depends_on:
+      - prometheus
+    privileged: true
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "4000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./telemetry/grafana-provisioning:/etc/grafana/provisioning/:ro
+
+
+    
+
 volumes:
-  db-data:
   redis-data:
+  prometheus-data:
+  grafana-data:
 
