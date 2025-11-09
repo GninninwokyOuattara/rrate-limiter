@@ -74,3 +74,7 @@ rate_limiter run
 ```zsh
 docker compose up
 ```
+
+This project comes with a simple dashboard already provisioned to grafana to monitor the rate limiter. It is accessible on the port 4000.
+
+<img src="https://github.com/GninninwokyOuattara/rrate-limiter/raw/main/docs/dashboard.png"/>
