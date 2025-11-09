@@ -12,6 +12,7 @@ This is hobby project. The goal is to improve my knowledge and skills of the Rus
 
 It addresses the common problem in system design aka 'design a rate limiter' but goes beyong the conceptual design by providing a concrete implementation.    
 
+[For more details on the architecture](https://github.com/GninninwokyOuattara/rrate-limiter/blob/main/ARCHITECTURE.md)
 
 
 ## Prerequisites
